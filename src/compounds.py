@@ -5,7 +5,7 @@ import sys, yaml
 
 class Compound:
 
-    root=("root",0,-1)
+    root=("root",-1,0)
     pos=("N",-1)
 
     def __init__(self,name):
@@ -21,7 +21,7 @@ class Compound:
     def setRel(self,rels):
         self.relmap={}
         for rel in rels:
-            dep=rel[2]
+            dep=rel[1]
             self.relmap[dep]=rel
 
     def setPos(self,poses):
@@ -40,7 +40,7 @@ class Compound:
             sid=id+1
             rel=self.relmap.get(sid,Compound.root)
             pos=self.posmap.get(sid,Compound.pos)
-            line=str(sid)+"\t"+token+"/"+pos[0]+"\t"+str(rel[1])+"\t"+rel[0]
+            line=str(sid)+"\t"+token+"/"+pos[0]+"\t"+str(rel[2])+"\t"+rel[0]
             lines.append(line)
 
         return lines
@@ -61,7 +61,7 @@ class Compounder:
         self.compounds=[]
 
         try:
-            self.rel=self.configured.get("rels",[("nn",2,1)])
+            self.rel=self.configured.get("rels",[("nn",1,2)])
             self.pos=self.configured.get("pos",[])
             self.compound_file=self.configured["compound_file"]
         except:
