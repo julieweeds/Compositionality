@@ -66,29 +66,49 @@ class CompoundFinder(Compounder):
           #      print line
            # print self.counts[key]
 
+
     def process_sentence(self,sentence):
-
-        rel_to_match=self.rel[0]  #assuming there is only one rel in list at the moment
-        dp=str(self.rel[1])
-        hp=str(self.rel[2])
-
+        #do not know relation name or Pos tags
+        #looking for any combination of the compound words
         for arc in sentence.values():
-            if arc[2]==rel_to_match:
+            canddep=getLex(arc[0]).lower()
+            candhead= getLex(sentence[arc[1]][0]).lower()
+            candrel=arc[2]
 
-                dep = arc[0]
-                head=sentence[arc[1]][0]
-                if getPos(dep).startswith(self.posmap[dp]) and getPos(head).startswith(self.posmap[hp]):
+            if canddep in self.firstindex.keys():
+                candcomp=self.compounds[self.firstindex[canddep]]
 
-                    dep=getLex(dep)
-                    head=getLex(head)
 
-                    for comp in self.compounds.get(head,[]):
+            if canddep in self.secondindex.keys():
+                candcomp=self.compounds[self.secondindex[canddep]]
 
-                        if comp.match(head,dep):
-                            sofar=self.counts[comp]
 
-                            self.counts[comp]=sofar+1
-        #print self.compounds.keys()
+            if candcomp.match(candhead,canddep)
+
+        return
+    # def process_sentence(self,sentence):
+    #
+    #     rel_to_match=self.rel[0]  #assuming there is only one rel in list at the moment
+    #     dp=str(self.rel[1])
+    #     hp=str(self.rel[2])
+    #
+    #     for arc in sentence.values():
+    #         if arc[2]==rel_to_match:
+    #
+    #             dep = arc[0]
+    #             head=sentence[arc[1]][0]
+    #             if getPos(dep).startswith(self.posmap[dp]) and getPos(head).startswith(self.posmap[hp]):
+    #
+    #                 dep=getLex(dep)
+    #                 head=getLex(head)
+    #
+    #                 for comp in self.compounds.get(head,[]):
+    #
+    #                     if comp.match(head,dep):
+    #                         sofar=self.counts[comp]
+    #
+    #                         self.counts[comp]=sofar+1
+    #     #print self.compounds.keys()
 
 
     def run(self):

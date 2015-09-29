@@ -1,6 +1,4 @@
 {
 "compound_file":"EN_NCs_Conv_NonComp_v1.0/nonComp-judgments.csv",
-"rel":[["nn",1,2],["amod",1,2]]
-"pos":[{"1":"N","2":"N"},{"1":"J","2":"N"}]
 "corpus":"output.wikipedia.conllx"
 }

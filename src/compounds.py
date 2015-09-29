@@ -6,11 +6,15 @@ import sys, yaml
 class Compound:
 
     root=("root",-1,0)
-    pos=("N",-1)
+    pos=("?",-1)
 
     def __init__(self,name):
         self.name=name
         self.judgements=[]
+        self.relmap={}
+        self.deps=[]
+        self.heads=[]
+        self.posmap={}
 
     def addJudgement(self,NC):
         self.judgements.append(NC)
@@ -19,27 +23,30 @@ class Compound:
         self.judgements=[int(item) for item in NCs]
 
     def setRel(self,rel):
-        self.relmap={}
-        dep=rel[1]
-        self.relmap[dep]=rel
 
-        self.deps=[]
-        self.heads=[]
-        for rel in self.relmap.values():
-            self.deps.append(rel[1])
-            if rel[2] not in self.deps:self.heads.append(rel[2])
+        if len(rel)>0:
+            dep=rel[1]
+            self.relmap[dep]=rel
+            for rel in self.relmap.values():
+                self.deps.append(rel[1])
+                if rel[2] not in self.deps:self.heads.append(rel[2])
 
 
     def setPos(self,poses):
         self.posmap=poses
 
+    def getFirst(self):
+        return self.name.split(" ")[0]
+
+    def getSecond(self):
+        return self.name.split(" ")[1]
 
     def getHead(self):
 
         if len(self.heads)==1:
             return self.name.split(" ")[self.heads[0]-1]
         else:
-            print "Error: multiple heads"
+            print "Error: multiple or no heads"
             return self.name.split(" ")[self.heads[0]-1]
 
     def getDeps(self):
@@ -77,14 +84,11 @@ class Compounder:
         with open(self.configfile) as fp:
             self.configured=yaml.safe_load(fp)
         print self.configured
-        self.compounds={} #key is head, value is list of compounds
-
+        self.compounds={} #key is name, value is list of compounds
+        self.firstindex={} #key is first word, value is name
+        self.secondindex={} #key is second word, value is name
         try:
-            self.rel=self.configured.get("rels",["nn",1,2])
-            self.posmap=self.configured.get("pos",[])
             self.compound_file=self.configured["compound_file"]
-
-            print self.posmap
 
         except:
             print "Error: problem with configuration"
@@ -96,24 +100,26 @@ class Compounder:
                 line=line.rstrip()
                 fields=line.split(",")
                 aCompound=Compound(fields[0])
-                aCompound.setRel(self.rel)
-                aCompound.setPos(self.posmap)
                 aCompound.setJudgements(fields[1:])
-                head=aCompound.getHead()
-                if self.compounds.get(head,None) != None:
-                    sofar=self.compounds[head]
-                else:
-                    sofar=[]
 
-                sofar.append(aCompound)
-                self.compounds[head]=sofar
+                if self.compounds.get(aCompound.name,None) == None:
+                    self.compounds[aCompound.name]=aCompound
+                    sofar= self.firstindex.get(aCompound.getFirst(),[])
+                    sofar.append(aCompound.name)
+                    self.firstindex[aCompound.getFirst()]=sofar
+                    sofar=self.secondindex.get(aCompound.getSecond(),[])
+                    sofar.append(aCompound.name)
+                    self.secondindex[aCompound.getSecond()]=sofar
+                else:
+                    print "Error: Duplicate noun compound"
+
+
 
 
 
     def run(self):
         self.readcompounds()
-        for head in self.compounds.keys():
-            for compound in self.compounds[head]:
+        for compound in self.compounds.values():
                 compound.display()
         return
 
