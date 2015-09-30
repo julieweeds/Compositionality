@@ -5,21 +5,26 @@ from compounds import Compounder, Compound
 
 
 def getPos(word):
-    return word.split('/')[1]
+    try:
+        return word.split('/')[-1][0]
+    except:
+        return word.split('/')[1]
 
 def getLex(word):
     return word.split('/')[0].lower()
 
 class CompoundFinder(Compounder):
 
+    freqthresh=10
+    blacklist=["conj","dobj","nsubj","poss","appos"]
     def __init__(self,configfile):
         Compounder.__init__(self,configfile)
         self.corpusfile=self.configured.get("corpus")
         self.readcompounds()
         self.counts={}
-        for head in self.compounds.keys():
-            for comp in self.compounds[head]:
-                self.counts[comp]=0
+
+        # for comp in self.compounds.keys():
+        #     self.counts[comp]=0
 
 
     def process_corpus(self):
@@ -40,75 +45,53 @@ class CompoundFinder(Compounder):
                 if lines%1000000==0: print "Processed "+str(lines)+" lines"
         #analyse counts
 
-        mini = min(self.counts.values())
-        maxi = max(self.counts.values())
+        sum=0
+        multiple=0
+        counts=[]
+        rels=[]
+        freqmultiple=0
+        for comp in self.compounds.values():
+            if len(comp.counts)>0:
+                sum+=1
+
+                if len(comp.counts)>1:
+                    multiple+=1
+                    if comp.filter(CompoundFinder.freqthresh,CompoundFinder.blacklist):
+                        freqmultiple+=1
+                        comp.display()
+                        #comp.pickBest()
+                #comp.display()
+                counts.append(comp.getTotal())
+                rel =comp.rels[0][0]
+                if rel not in rels: rels.append(rel)
+        print "Found "+str(sum)+" compounds"
+        print "Multiple analyses: "+str(multiple)
+        print "Multiple analyses passing filters: "+str(freqmultiple)
+        print "Relations included: ",rels
+        mini = min(counts)
+        maxi = max(counts)
         print "Min count is "+str(mini)
         print "Max count is "+str(maxi)
-        print self.counts.keys()
-
-        minicounts=0
-        for comp in self.counts.keys():
-            if self.counts[comp]<mini+5:
-                minicounts+=1
-
-                for line in comp.getConll():
-                    print line
-                print self.counts[comp]
-            elif self.counts[comp]>maxi-5:
-
-                for line in comp.getConll():
-                    print line
-                print self.counts[comp]
-
-        print "Low counts: "+str(minicounts)
-        #for key in self.counts.keys():
-         #   for line in key.getConll():
-          #      print line
-           # print self.counts[key]
 
 
     def process_sentence(self,sentence):
         #do not know relation name or Pos tags
         #looking for any combination of the compound words
-        for arc in sentence.values():
+        for i,arc in enumerate(sentence.values()):
             canddep=getLex(arc[0]).lower()
-            candhead= getLex(sentence[arc[1]][0]).lower()
             candrel=arc[2]
+            #print arc
+            if int(arc[1])==i+2 and candrel not in CompoundFinder.blacklist:
+                candhead= getLex(sentence[arc[1]][0]).lower()
 
-            if canddep in self.firstindex.keys():
-                candcomp=self.compounds[self.firstindex[canddep]]
+                candkey = canddep+" "+candhead
+
+                if candkey in self.compounds.keys():
+                    self.compounds[candkey].match(canddep,candhead,(candrel,getPos(arc[0]),getPos(sentence[arc[1]][0])))
+                        #print "Match found for: ", arc
+                        #self.compounds[candkey].display()
 
 
-            if canddep in self.secondindex.keys():
-                candcomp=self.compounds[self.secondindex[canddep]]
-
-
-            if candcomp.match(candhead,canddep)
-
-        return
-    # def process_sentence(self,sentence):
-    #
-    #     rel_to_match=self.rel[0]  #assuming there is only one rel in list at the moment
-    #     dp=str(self.rel[1])
-    #     hp=str(self.rel[2])
-    #
-    #     for arc in sentence.values():
-    #         if arc[2]==rel_to_match:
-    #
-    #             dep = arc[0]
-    #             head=sentence[arc[1]][0]
-    #             if getPos(dep).startswith(self.posmap[dp]) and getPos(head).startswith(self.posmap[hp]):
-    #
-    #                 dep=getLex(dep)
-    #                 head=getLex(head)
-    #
-    #                 for comp in self.compounds.get(head,[]):
-    #
-    #                     if comp.match(head,dep):
-    #                         sofar=self.counts[comp]
-    #
-    #                         self.counts[comp]=sofar+1
-    #     #print self.compounds.keys()
 
 
     def run(self):

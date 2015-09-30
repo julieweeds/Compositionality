@@ -11,10 +11,9 @@ class Compound:
     def __init__(self,name):
         self.name=name
         self.judgements=[]
-        self.relmap={}
-        self.deps=[]
-        self.heads=[]
-        self.posmap={}
+        self.rels=[]
+        #self.PoSes=[]
+        self.counts=[]
 
     def addJudgement(self,NC):
         self.judgements.append(NC)
@@ -22,18 +21,16 @@ class Compound:
     def setJudgements(self,NCs):
         self.judgements=[int(item) for item in NCs]
 
-    def setRel(self,rel):
-
-        if len(rel)>0:
-            dep=rel[1]
-            self.relmap[dep]=rel
-            for rel in self.relmap.values():
-                self.deps.append(rel[1])
-                if rel[2] not in self.deps:self.heads.append(rel[2])
-
-
-    def setPos(self,poses):
-        self.posmap=poses
+    def addRel(self,rellist):
+        found =False
+        for index,rel in enumerate(self.rels):
+            if rellist==rel:
+                self.counts[index]+=1
+                found=True
+                break
+        if not found:
+            self.rels.append(rellist)
+            self.counts.append(1)
 
     def getFirst(self):
         return self.name.split(" ")[0]
@@ -41,40 +38,75 @@ class Compound:
     def getSecond(self):
         return self.name.split(" ")[1]
 
-    def getHead(self):
+    def match(self,dep,head, rel):
 
-        if len(self.heads)==1:
-            return self.name.split(" ")[self.heads[0]-1]
+        if (head==self.getSecond() and dep ==self.getFirst()):
+            self.addRel([rel[0],1,2,rel[1],rel[2]])
+            return True
+        # elif (head==self.getFirst() and dep ==self.getSecond()):
+        #     self.addRel([rel[0],2,1,rel[2],rel[1]])
+        #     return True
         else:
-            print "Error: multiple or no heads"
-            return self.name.split(" ")[self.heads[0]-1]
+            return False
 
-    def getDeps(self):
-        return [self.name.split(" ")[dep-1] for dep in self.deps]
+    def filter(self,freqthresh,blacklist):
 
-    def match(self,head,dep):
+        newrels=[]
+        newcounts=[]
+        for index,count in enumerate(self.counts):
+            if count>=freqthresh and self.rels[index] not in blacklist:
+                newrels.append(self.rels[index])
+                newcounts.append(count)
 
-        return head == self.getHead() and dep in self.getDeps()
+        if len(newcounts)==0:
+            self.filter(0,blacklist)
+            if len(self.counts)>0:
+                self.pickBest()
+        else:
+            self.counts=newcounts
+            self.rels=newrels
+        return len(newcounts)>1
+
+    def pickBest(self):
+        max=0
+        mindex=-1
+        for index,count in enumerate(self.counts):
+            if count>max:
+                max=count
+                mindex=index
+        self.counts=[self.counts[mindex]]
+        self.rels=[self.rels[mindex]]
 
     def getScore(self):
         return sum(self.judgements)
 
+    def getTotal(self):
+        return sum(self.counts)
+
     def getConll(self):
         tokens=self.name.split(" ")
         lines=[]
-        for(id,token) in enumerate(tokens):
-            sid=id+1
-            rel=self.relmap.get(sid,Compound.root)
-            pos=self.posmap.get(sid,Compound.pos)
-            line=str(sid)+"\t"+token+"/"+pos[0]+"\t"+str(rel[2])+"\t"+rel[0]
-            lines.append(line)
+
+        for index,rel in enumerate(self.rels):
+            for(id,token) in enumerate(tokens):
+                sid=id+1
+
+                if sid==rel[1]: #dependent
+                    line=str(sid)+"\t"+token+"/"+rel[3]+"\t"+str(rel[2])+"\t"+rel[0]
+                elif sid==rel[2]: # head
+                    line=str(sid)+"\t"+token+"/"+rel[4]+"\t0\troot"
+                else:
+                    print "Too many tokens"
+                lines.append(line)
+            lines.append("counts: "+str(self.counts[index]))
 
         return lines
 
     def display(self):
         for line in self.getConll():
             print line
-        print self.getScore()
+        print "Non-Compositionality",self.getScore()
+        print "-----"
 
 
 class Compounder:
