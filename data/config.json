@@ -1,4 +1,5 @@
 {
 "compound_file":"EN_NCs_Conv_NonComp_v1.0/nonComp-judgments.csv",
-"corpus":"output.wikipedia.conllx"
+"corpus":"output.wikipedia.conllx",
+"contiguous":False
 }

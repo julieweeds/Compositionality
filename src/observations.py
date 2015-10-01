@@ -1,17 +1,7 @@
 __author__ = 'juliewe'
 
 import sys
-from compounds import Compounder, Compound
-
-
-def getPos(word):
-    try:
-        return word.split('/')[-1][0]
-    except:
-        return word.split('/')[1]
-
-def getLex(word):
-    return word.split('/')[0].lower()
+from compounds import Compounder, Compound, getLex, getPos
 
 class CompoundFinder(Compounder):
 
@@ -20,14 +10,31 @@ class CompoundFinder(Compounder):
     def __init__(self,configfile):
         Compounder.__init__(self,configfile)
         self.corpusfile=self.configured.get("corpus")
+        self.contiguous=self.configured.get("contiguous",False)
+        self.ptype=self.configured.get("ptype","wiki")
         self.readcompounds()
         self.counts={}
+        self.countpos={}
+        self.rels={}
 
-        # for comp in self.compounds.keys():
-        #     self.counts[comp]=0
+        if self.ptype=="nyt":
+            self.lex=0
+            self.headpos=3
+            self.relname=4
+            self.pos=1
+            self.postagged=False
+        else:
+            self.headpos=1
+            self.relname=2
+            self.lex=0
+            self.postagged=True
 
+        for comp in self.compounds.keys():
+            self.counts[comp]=0
+            self.countpos[comp]=0
 
     def process_corpus(self):
+        print self.compounds.keys()
         with open(self.corpusfile) as fp:
             sentencebuffer={}
             lines=0
@@ -36,15 +43,48 @@ class CompoundFinder(Compounder):
                 #need to be careful in case there are any dependencies on dependent
                 line=line.rstrip()
                 fields=line.split('\t')
-                if len(fields)==4:
+                if len(fields)==4 or len(fields)==6:
                     sentencebuffer[fields[0]]=fields[1:]
                 else:
-                    self.process_sentence(sentencebuffer)
+                    if self.contiguous:
+                        self.process_sentence_contiguous(sentencebuffer)
+                    else:
+                        self.process_sentence(sentencebuffer)
                     sentencebuffer={}
                 lines+=1
-                if lines%1000000==0: print "Processed "+str(lines)+" lines"
+                if lines%1000000==0:
+                    print "Processed "+str(lines)+" lines"
+                    print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"
         #analyse counts
+        if self.contiguous:
+            self.analyse_contiguous()
+        else:
+            self.analyse()
 
+    def non_zero(self):
+        sum=0
+        for v in self.counts.values():
+            if v>0:sum+=1
+        return sum
+
+    def analyse_contiguous(self):
+        sum=0
+        sumpos=0
+        for candkey in self.counts.keys():
+            if self.counts[candkey]>0:
+                sum+=1
+                if self.countpos[candkey]>0:sumpos+=1
+                else: print "Not found with correct PoS: "+candkey
+            else: print "Not found: "+candkey
+
+
+        print "Found "+str(sum)+" contiguous compounds"
+        print "Found "+str(sumpos)+" with correct PoS tags"
+        print "Min count is "+str(min(self.counts.values()))
+        print "Max count is "+str(max(self.counts.values()))
+        print "Relation set observed ",self.rels
+
+    def analyse(self):
         sum=0
         multiple=0
         counts=[]
@@ -73,21 +113,49 @@ class CompoundFinder(Compounder):
         print "Min count is "+str(mini)
         print "Max count is "+str(maxi)
 
+    def process_sentence_contiguous(self,sentence):
+        #just interested in contiguous nouns don't care about relations
+
+        #print sentence
+        for i in sentence.keys():
+            sid =int (i)
+            if sid<len(sentence.values())-1:
+                arc=sentence[i]
+                canddep=getLex(arc[0]).lower()
+                candhead=getLex(sentence[str(sid+1)][0]).lower()
+
+                candkey=canddep+" "+candhead
+                #print candkey
+                if candkey in self.compounds.keys():
+                    self.counts[candkey]+=1
+                    deppos=getPos(arc[0])
+                    dephead=getPos(sentence[str(sid+1)][0])
+                    if deppos=="N" and dephead=="N":
+                        self.countpos[candkey]+=1
+                    if arc[1]==str(sid+1): #dependency relationship
+                        sofar=self.rels.get(arc[2],0)
+                        self.rels[arc[2]]=sofar+1
+                    else:
+                        print candkey, " :contiguous but no dependency: ",sentence
 
     def process_sentence(self,sentence):
         #do not know relation name or Pos tags
         #looking for any combination of the compound words
         for i,arc in enumerate(sentence.values()):
-            canddep=getLex(arc[0]).lower()
-            candrel=arc[2]
+            canddep=getLex(self.lex,postagged=self.postagged).lower()
+            candrel=arc[self.relname]
             #print arc
-            if int(arc[1])==i+2 and candrel not in CompoundFinder.blacklist:
-                candhead= getLex(sentence[arc[1]][0]).lower()
+            if int(arc[self.headpos])==i+2 and candrel not in CompoundFinder.blacklist:
+                candhead= getLex(sentence[arc[self.headpos]][0]).lower()
 
                 candkey = canddep+" "+candhead
-
+                #print candkey
                 if candkey in self.compounds.keys():
-                    self.compounds[candkey].match(canddep,candhead,(candrel,getPos(arc[0]),getPos(sentence[arc[1]][0])))
+                    if self.ptype=="nyt":
+                        self.compounds[candkey].match(canddep,candhead,(candrel,arc[self.pos][0],sentence[arc[self.headpos]][self.pos][0]))
+                    else:
+                        self.compounds[candkey].match(canddep,candhead,(candrel,getPos(arc[0]),getPos(sentence[arc[1]][0])))
+                    self.counts[candkey]+=1
                         #print "Match found for: ", arc
                         #self.compounds[candkey].display()
 
