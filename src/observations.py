@@ -21,13 +21,15 @@ class CompoundFinder(Compounder):
             self.lex=0
             self.headpos=3
             self.relname=4
-            self.pos=1
+            self.pos=2
             self.postagged=False
+            self.arclength=5
         else:
             self.headpos=1
             self.relname=2
             self.lex=0
             self.postagged=True
+            self.arclength=3
 
         for comp in self.compounds.keys():
             self.counts[comp]=0
@@ -118,46 +120,57 @@ class CompoundFinder(Compounder):
 
         #print sentence
         for i in sentence.keys():
-            sid =int (i)
-            if sid<len(sentence.values())-1:
-                arc=sentence[i]
-                canddep=getLex(arc[0]).lower()
-                candhead=getLex(sentence[str(sid+1)][0]).lower()
+            try:
+                sid =int (i)
+                if sid<len(sentence.values())-1:
+                    arc=sentence[i]
+                    canddep=getLex(arc[self.lex]).lower()
+                    candhead=getLex(sentence[str(sid+1)][self.lex]).lower()
 
-                candkey=canddep+" "+candhead
-                #print candkey
-                if candkey in self.compounds.keys():
-                    self.counts[candkey]+=1
-                    deppos=getPos(arc[0])
-                    dephead=getPos(sentence[str(sid+1)][0])
-                    if deppos=="N" and dephead=="N":
-                        self.countpos[candkey]+=1
-                    if arc[1]==str(sid+1): #dependency relationship
-                        sofar=self.rels.get(arc[2],0)
-                        self.rels[arc[2]]=sofar+1
-                    else:
-                        print candkey, " :contiguous but no dependency: ",sentence
+                    candkey=canddep+" "+candhead
+                    #print candkey
+                    if candkey in self.compounds.keys():
+                        self.counts[candkey]+=1
+                        if self.postagged:
+                            deppos=getPos(arc[self.lex])
+                            dephead=getPos(sentence[str(sid+1)][self.lex])
+                        else:
+                            deppos=arc[self.pos]
+                            dephead=sentence[str(sid+1)][self.pos]
+
+                        if deppos=="N" and dephead=="N":
+                            self.countpos[candkey]+=1
+                        if arc[self.headpos]==str(sid+1): #dependency relationship
+                            sofar=self.rels.get(arc[self.relname],0)
+                            self.rels[arc[self.relname]]=sofar+1
+                        else:
+                            print candkey, " :contiguous but no dependency: ",i,arc,sentence[str(sid+1)],sentence[arc[self.headpos]]
+            except:
+                pass
 
     def process_sentence(self,sentence):
         #do not know relation name or Pos tags
         #looking for any combination of the compound words
+        #print sentence
         for i,arc in enumerate(sentence.values()):
-            canddep=getLex(self.lex,postagged=self.postagged).lower()
-            candrel=arc[self.relname]
-            #print arc
-            if int(arc[self.headpos])==i+2 and candrel not in CompoundFinder.blacklist:
-                candhead= getLex(sentence[arc[self.headpos]][0]).lower()
+            if len(arc)==self.arclength:
+                canddep=getLex(arc[self.lex],postagged=self.postagged).lower()
+                #print self.relname,arc
+                candrel=arc[self.relname]
+                #print arc
+                if int(arc[self.headpos])==i+2 and candrel not in CompoundFinder.blacklist:
+                    candhead= getLex(sentence[arc[self.headpos]][0]).lower()
 
-                candkey = canddep+" "+candhead
-                #print candkey
-                if candkey in self.compounds.keys():
-                    if self.ptype=="nyt":
-                        self.compounds[candkey].match(canddep,candhead,(candrel,arc[self.pos][0],sentence[arc[self.headpos]][self.pos][0]))
-                    else:
-                        self.compounds[candkey].match(canddep,candhead,(candrel,getPos(arc[0]),getPos(sentence[arc[1]][0])))
-                    self.counts[candkey]+=1
-                        #print "Match found for: ", arc
-                        #self.compounds[candkey].display()
+                    candkey = canddep+" "+candhead
+                    #print candkey
+                    if candkey in self.compounds.keys():
+                        if self.ptype=="nyt":
+                            self.compounds[candkey].match(canddep,candhead,(candrel,arc[self.pos][0],sentence[arc[self.headpos]][self.pos][0]))
+                        else:
+                            self.compounds[candkey].match(canddep,candhead,(candrel,getPos(arc[0]),getPos(sentence[arc[1]][0])))
+                        self.counts[candkey]+=1
+                            #print "Match found for: ", arc
+                            #self.compounds[candkey].display()
 
 
 

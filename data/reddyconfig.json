@@ -1,7 +1,7 @@
 {
 "compound_file":"ijcnlp_compositionality_data/MeanAndDeviations.clean.txt",
 "corpus":"partial.nyt.conllx",
-"contiguous":False,
+"contiguous":True,
 "ctype":"reddy",
 "ptype":"nyt"
 }
