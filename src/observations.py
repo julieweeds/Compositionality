@@ -7,11 +7,13 @@ class CompoundFinder(Compounder):
 
     freqthresh=10
     blacklist=["conj","dobj","nsubj","poss","appos"]
+    erased=["-","-","-",0,"erased"]
     def __init__(self,configfile):
         Compounder.__init__(self,configfile)
         self.corpusfile=self.configured.get("corpus")
         self.contiguous=self.configured.get("contiguous",False)
         self.ptype=self.configured.get("ptype","wiki")
+        self.convert=self.configured.get("convert",False)
         self.readcompounds()
         self.counts={}
         self.countpos={}
@@ -57,6 +59,7 @@ class CompoundFinder(Compounder):
                 if lines%1000000==0:
                     print "Processed "+str(lines)+" lines"
                     print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"
+                    exit(1)
         #analyse counts
         if self.contiguous:
             self.analyse_contiguous()
@@ -131,6 +134,8 @@ class CompoundFinder(Compounder):
                     #print candkey
                     if candkey in self.compounds.keys():
                         self.counts[candkey]+=1
+
+                        if self.convert: sentence=self.convert_compounds(sentence,sid,candkey)
                         if self.postagged:
                             deppos=getPos(arc[self.lex])
                             dephead=getPos(sentence[str(sid+1)][self.lex])
@@ -143,10 +148,44 @@ class CompoundFinder(Compounder):
                         if arc[self.headpos]==str(sid+1): #dependency relationship
                             sofar=self.rels.get(arc[self.relname],0)
                             self.rels[arc[self.relname]]=sofar+1
+
                         else:
                             print candkey, " :contiguous but no dependency: ",i,arc,sentence[str(sid+1)],sentence[arc[self.headpos]]
             except:
+                print "Warning: error ignored"
                 pass
+
+            if self.convert: self.output_sentence(sentence)
+
+    def convert_compounds(self,sentence,sid,compoundphrase):
+        sentence[str(sid+1)][self.lex]=compoundphrase
+        sentence[str(sid)]=CompoundFinder.erased
+        print "Converting compounds: ",compoundphrase,sid
+        #print sentence.keys()
+        for index in sentence.keys():
+            if len(sentence[index])==self.arclength:
+
+                #print index,sentence[index]
+                if sentence[index][self.headpos]==str(sid):
+            #      print "Found dependency on dependency"
+                   sentence[index][self.headpos]=str(sid+1)
+        print "Complete"
+
+        return sentence
+
+    def output_sentence(self,sentence):
+        slength=len(sentence.keys())
+        for i in range(0,slength):
+            index=str(i)
+
+            arc=sentence.get(index,None)
+            if arc!=None:
+                self.outstream.write(index)
+                for value in sentence[index]:
+                    self.outstream.write("\t"+str(value))
+                self.outstream.write("\n")
+
+        self.outstream.write("\n")
 
     def process_sentence(self,sentence):
         #do not know relation name or Pos tags
@@ -177,8 +216,11 @@ class CompoundFinder(Compounder):
 
     def run(self):
 
+        if self.convert:
+            self.outstream = open(self.corpusfile+".compounds","w")
         self.process_corpus()
-
+        if self.convert:
+            self.outstream.close()
 
 if __name__=="__main__":
     myCompoundFinder=CompoundFinder(sys.argv[1])
