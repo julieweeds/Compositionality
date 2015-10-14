@@ -3,5 +3,6 @@
 "corpus":"partial.nyt.conllx",
 "contiguous":True,
 "ctype":"reddy",
-"ptype":"nyt"
+"ptype":"nyt",
+"convert":True
 }
