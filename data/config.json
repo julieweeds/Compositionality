@@ -1,5 +1,6 @@
 {
 "compound_file":"EN_NCs_Conv_NonComp_v1.0/nonComp-judgments.csv",
-"corpus":"output.wikipedia.conllx",
-"contiguous":False
+"corpus":"/home/j/ju/juliewe/Documents/workspace/corpora/gigaword_eng_5/datasets-parsed/nyt/nyt_eng_199407.parsed.conll",
+"contiguous":True,
+"ptype":"conll7"
 }

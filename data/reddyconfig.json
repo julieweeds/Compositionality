@@ -1,7 +1,7 @@
 {
-"compound_file":"ijcnlp_compositionality_data/MeanAndDeviations.clean.txt",
-"corpus":"partial.nyt.conllx",
+"compound_file":"ijcnlp_compositionality_data/goldstandard.txt",
+"corpus":"/home/j/ju/juliewe/Documents/workspace/corpora/gigaword_eng_5/datasets-parsed/nyt/nyt_eng_199407.parsed.conll",
 "contiguous":True,
 "ctype":"reddy",
-"ptype":"nyt"
+"ptype":"conll7"
 }
