@@ -22,6 +22,7 @@ class CompoundFinder(Compounder):
 
         if self.ptype=="nyt":
             self.lex=0
+            self.lemma=1
             self.headpos=3
             self.relname=4
             self.pos=2
@@ -32,6 +33,7 @@ class CompoundFinder(Compounder):
             self.extra=["0","punct"]
         elif self.ptype=="conll7":
             self.lex=0
+            self.lemma=1
             self.headpos=4
             self.relname=5
             self.pos=2
@@ -43,6 +45,7 @@ class CompoundFinder(Compounder):
             self.headpos=1
             self.relname=2
             self.lex=0
+            self.lemma=-1
             self.postagged=True
             self.arclength=3
             self.firstindex=1
@@ -174,7 +177,7 @@ class CompoundFinder(Compounder):
                     if candkey in self.compounds.keys():
                         self.counts[candkey]+=1
 
-                        if self.convert: sentence=self.convert_compounds(sentence,sid,candkey)
+                        if self.convert: sentence=self.convert_compounds(sentence,sid)
                         self.cont+=1
                         #if self.counts[candkey]==1:
                         #    print "First found compound: line "+str(self.lines)
@@ -198,15 +201,19 @@ class CompoundFinder(Compounder):
                             print candkey, " :contiguous but no dependency: ",i,arc,sentence[str(sid+1)],sentence[arc[self.headpos]]
                             self.cont_nodep+=1
             except:
-                print "Warning: error ignored"
+                #print "Warning: error ignored"
                 pass
 
-            if self.convert: self.output_sentence(sentence)
+        if self.convert: self.output_sentence(sentence)
 
-    def convert_compounds(self,sentence,sid,compoundphrase):
-        sentence[str(sid+1)][self.lex]=compoundphrase
+    def convert_compounds(self,sentence,sid):
+        cmpd=sentence[str(sid)][self.lex]+"_"+sentence[str(sid+1)][self.lex]
+        sentence[str(sid+1)][self.lex]=cmpd
+        if self.lemma>-1:
+            sentence[str(sid+1)][self.lemma]=sentence[str(sid)][self.lemma]+"_"+sentence[str(sid+1)][self.lemma]
+
         sentence[str(sid)]=CompoundFinder.erased
-        print "Converting compounds: ",compoundphrase,sid
+        print "Converting compounds: ",cmpd,sid
         #print sentence.keys()
         for index in sentence.keys():
             if len(sentence[index])==self.arclength:
