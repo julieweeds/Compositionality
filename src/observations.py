@@ -177,7 +177,7 @@ class CompoundFinder(Compounder):
         #print sentence
         if self.clean:
             self.output_sentence(sentence,self.cleanstream)
-        mxindex=len(sentence.values())-1+self.firstindex
+        mxindex=len(sentence.values())+self.firstindex
         for i in sentence.keys():
             try:
                 sid =int (i)
