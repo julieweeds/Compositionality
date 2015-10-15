@@ -1,6 +1,6 @@
 __author__ = 'juliewe'
 
-import sys, numpy as np,os
+import sys, numpy as np,os,ast
 from compounds import Compounder, Compound, getLex, getPos
 
 class CompoundFinder(Compounder):
@@ -12,50 +12,30 @@ class CompoundFinder(Compounder):
 
     def __init__(self,configfile):
         Compounder.__init__(self,configfile)
-        self.corpusfile=self.configured.get("corpus")
-        self.contiguous=self.configured.get("contiguous",False)
-        self.ptype=self.configured.get("ptype","wiki")
-        self.convert=self.configured.get("convert",False)
-        self.clean=self.configured.get("clean",False)
-        self.dir=self.configured.get("dir",False)
+        self.corpusfile=self.config.get('default','corpus')
+        self.contiguous=(self.config.get('default','contiguous')=='True')
+        self.ptype=self.config.get('default','ptype')
+        self.convert=(self.config.get('default','convert')=='True')
+        self.clean=(self.config.get('default','clean')=='True')
+        self.dir=(self.config.get('default','dir')=='True')
         self.readcompounds()
         self.counts={}
         self.countpos={}
         self.countrel={}
         self.rels={}
 
-        if self.ptype=="nyt":
-            self.lex=0
-            self.lemma=1
-            self.headpos=3
-            self.relname=4
-            self.pos=2
-            self.postagged=False
-            self.arclength=5
-            self.firstindex=1
-            self.minlength=3
-            self.extra=["0","punct"]
-            self.erased=["-","-","-",0,"erased"]
-        elif self.ptype=="conll7":
-            self.lex=0
-            self.lemma=1
-            self.headpos=4
-            self.relname=5
-            self.pos=2
-            self.postagged=False
-            self.arclength=6
-            self.firstindex=0
-            self.minlength=self.arclength
-            self.erased=["-","-","-","-",0,"erased"]
-        else:
-            self.headpos=1
-            self.relname=2
-            self.lex=0
-            self.lemma=-1
-            self.postagged=True
-            self.arclength=3
-            self.firstindex=1
-            self.minlength=self.arclength
+
+        self.lex=int(self.config.get(self.ptype,'lex'))
+        self.lemma=int(self.config.get(self.ptype,'lemma'))
+        self.headpos=int(self.config.get(self.ptype,'headpos'))
+        self.relname=int(self.config.get(self.ptype,'relname'))
+        self.pos=int(self.config.get(self.ptype,'pos'))
+        self.postagged=(self.config.get(self.ptype,'postagged')=='True')
+        self.arclength=int(self.config.get(self.ptype,'arclength'))
+        self.firstindex=int(self.config.get(self.ptype,'firstindex'))
+        self.minlength=int(self.config.get(self.ptype,'minlength'))
+        self.extra=ast.literal_eval(self.config.get(self.ptype,'extra'))
+        self.erased=ast.literal_eval(self.config.get(self.ptype,'erased'))
 
         for comp in self.compounds.keys():
             self.counts[comp]=0
@@ -109,10 +89,11 @@ class CompoundFinder(Compounder):
         self.lines=0
         if self.dir:
             indir=self.corpusfile
-
+            print "Processing ",indir
             os.chdir(indir)
             for datafile in [df for df in os.listdir(indir)]:
-                if df.endswith(".clean") or df.endswith(".compounds"):
+                print "Processing ", datafile
+                if datafile.endswith(".clean") or datafile.endswith(".compounds"):
                     pass
                 else:
                     self.process_file(file=datafile)

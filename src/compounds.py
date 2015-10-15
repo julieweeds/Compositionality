@@ -1,7 +1,7 @@
 __author__ = 'juliewe'
 #take in the list of noun compounds and generate other formats for composition etc
 
-import sys, yaml
+import sys, ConfigParser
 
 def getPos(word):
     try:
@@ -142,15 +142,19 @@ class Compounder:
 
     def __init__(self,filename):
         self.configfile=filename
-        with open(self.configfile) as fp:
-            self.configured=yaml.safe_load(fp)
-        print self.configured
+        #with open(self.configfile) as fp:
+        #    self.configured=yaml.safe_load(fp)
+        self.config=ConfigParser.RawConfigParser()
+        self.config.read(self.configfile)
+
+
+#        print self.configured
         self.compounds={} #key is name, value is list of compounds
         self.firstindex={} #key is first word, value is name
         self.secondindex={} #key is second word, value is name
-        self.ctype=self.configured.get("ctype","farahmand")
+        self.ctype=self.config.get('default','ctype')
         try:
-            self.compound_file=self.configured["compound_file"]
+            self.compound_file=self.config.get('default','compound_file')
 
         except:
             print "Error: problem with configuration"
