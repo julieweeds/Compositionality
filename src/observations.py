@@ -112,8 +112,10 @@ class CompoundFinder(Compounder):
 
             os.chdir(indir)
             for datafile in [df for df in os.listdir(indir)]:
-
-                self.process_file(file=datafile)
+                if df.endswith(".clean") or df.endswith(".compounds"):
+                    pass
+                else:
+                    self.process_file(file=datafile)
 
         else: self.process_file()
 
