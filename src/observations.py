@@ -212,7 +212,7 @@ class CompoundFinder(Compounder):
 
                             self.countrel[candkey]+=1
                         else:
-                            print candkey, " :contiguous but no dependency: ",i,arc,sentence[str(sid+1)],sentence[arc[self.headpos]]
+                            #print candkey, " :contiguous but no dependency: ",i,arc,sentence[str(sid+1)],sentence[arc[self.headpos]]
                             self.cont_nodep+=1
             except:
                 #print "Warning: error ignored"
