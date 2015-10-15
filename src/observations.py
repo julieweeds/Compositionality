@@ -243,7 +243,7 @@ class CompoundFinder(Compounder):
     def output_sentence(self,sentence,out):
         slength=len(sentence.keys())
         index_adj=1-self.firstindex
-        for i in range(0,slength):
+        for i in range(self.firstindex,slength+1-self.firstindex):
             index=str(i)
 
             arc=sentence.get(index,None)
