@@ -177,7 +177,7 @@ class CompoundFinder(Compounder):
         #print sentence
         if self.clean:
             self.output_sentence(sentence,self.cleanstream)
-        mxindex=len(sentence.values())+self.firstindex
+        mxindex=len(sentence.values())-1+self.firstindex
         for i in sentence.keys():
             try:
                 sid =int (i)
@@ -242,12 +242,16 @@ class CompoundFinder(Compounder):
 
     def output_sentence(self,sentence,out):
         slength=len(sentence.keys())
+        index_adj=1-self.firstindex
         for i in range(0,slength):
             index=str(i)
 
             arc=sentence.get(index,None)
             if arc!=None:
-                out.write(index)
+
+
+
+                out.write(str(i+index_adj))
                 for value in self.aptTransform(arc):
                     out.write("\t"+str(value))
                 out.write("\n")
@@ -258,8 +262,9 @@ class CompoundFinder(Compounder):
     #ptype=conll7: arc = [form,lemma,POS,NER,head,rel]
 
     #aptInput requires: arc = [form/POS,head,rel]
+        index_adj=1-self.firstindex
         if self.ptype=="conll7" or self.ptype=="nyt":
-            return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),arc[self.headpos],arc[self.relname]]
+            return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
         else:
             return arc
 
