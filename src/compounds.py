@@ -20,6 +20,8 @@ def getLex(word,delim='/',postagged=True):
     else:
         return word
 
+
+
 class Compound:
 
     #root=("root",-1,0)

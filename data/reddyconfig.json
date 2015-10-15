@@ -1,8 +1,10 @@
 {
 "compound_file":"ijcnlp_compositionality_data/MeanAndDeviations.clean.txt",
-"corpus":"partial.nyt.conllx",
+"corpus":"/home/j/ju/juliewe/Documents/workspace/corpora/gigaword_eng_5/datasets-parsed/andy_nyt",
 "contiguous":True,
 "ctype":"reddy",
-"ptype":"nyt",
-"convert":True
+"ptype":"conll7",
+"convert":True,
+"clean":True,
+"dir":True
 }

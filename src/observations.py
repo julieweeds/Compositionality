@@ -1,19 +1,23 @@
 __author__ = 'juliewe'
 
-import sys
+import sys, numpy as np,os
 from compounds import Compounder, Compound, getLex, getPos
 
 class CompoundFinder(Compounder):
 
     freqthresh=10
     blacklist=["conj","dobj","nsubj","poss","appos"]
-    erased=["-","-","-",0,"erased"]
+
+    postags=["N","V","J","R","F"]
+
     def __init__(self,configfile):
         Compounder.__init__(self,configfile)
         self.corpusfile=self.configured.get("corpus")
         self.contiguous=self.configured.get("contiguous",False)
         self.ptype=self.configured.get("ptype","wiki")
         self.convert=self.configured.get("convert",False)
+        self.clean=self.configured.get("clean",False)
+        self.dir=self.configured.get("dir",False)
         self.readcompounds()
         self.counts={}
         self.countpos={}
@@ -31,6 +35,7 @@ class CompoundFinder(Compounder):
             self.firstindex=1
             self.minlength=3
             self.extra=["0","punct"]
+            self.erased=["-","-","-",0,"erased"]
         elif self.ptype=="conll7":
             self.lex=0
             self.lemma=1
@@ -41,6 +46,7 @@ class CompoundFinder(Compounder):
             self.arclength=6
             self.firstindex=0
             self.minlength=self.arclength
+            self.erased=["-","-","-","-",0,"erased"]
         else:
             self.headpos=1
             self.relname=2
@@ -59,11 +65,16 @@ class CompoundFinder(Compounder):
         self.cont_nodep=0
         self.cont=0
 
-    def process_corpus(self):
-        print self.compounds.keys()
-        with open(self.corpusfile) as fp:
+    def process_file(self,file=""):
+        if file=="":file=self.corpusfile
+        if self.convert:
+            self.outstream = open(file+".compounds","w")
+        if self.clean:
+            self.cleanstream = open(file+".clean","w")
+
+        with open(file) as fp:
             sentencebuffer={}
-            self.lines=0
+
             for line in fp:
                 #need to load in sentence at a time and process each sentence
                 #need to be careful in case there are any dependencies on dependent
@@ -85,8 +96,26 @@ class CompoundFinder(Compounder):
                 if self.lines%1000000==0:
                     print "Processed "+str(self.lines)+" lines"
                     print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"
-                    exit(1)
                     print "Found "+str(self.non_zero(list=self.countrel.values()))+" with dependency relationship"
+
+        if self.convert:
+            self.outstream.close()
+        if self.clean:
+            self.cleanstream.close()
+
+    def process_corpus(self):
+
+        print self.compounds.keys()
+        self.lines=0
+        if self.dir:
+            indir=self.corpusfile
+
+            os.chdir(indir)
+            for datafile in [df for df in os.listdir(indir)]:
+
+                self.process_file(file=datafile)
+
+        else: self.process_file()
 
         #analyse counts
         if self.contiguous:
@@ -163,6 +192,8 @@ class CompoundFinder(Compounder):
         #just interested in contiguous nouns don't care about relations
 
         #print sentence
+        if self.clean:
+            self.output_sentence(sentence,self.cleanstream)
         mxindex=len(sentence.values())-1+self.firstindex
         for i in sentence.keys():
             try:
@@ -204,7 +235,7 @@ class CompoundFinder(Compounder):
                 #print "Warning: error ignored"
                 pass
 
-        if self.convert: self.output_sentence(sentence)
+        if self.convert: self.output_sentence(sentence, self.outstream)
 
     def convert_compounds(self,sentence,sid):
         cmpd=sentence[str(sid)][self.lex]+"_"+sentence[str(sid+1)][self.lex]
@@ -212,8 +243,8 @@ class CompoundFinder(Compounder):
         if self.lemma>-1:
             sentence[str(sid+1)][self.lemma]=sentence[str(sid)][self.lemma]+"_"+sentence[str(sid+1)][self.lemma]
 
-        sentence[str(sid)]=CompoundFinder.erased
-        print "Converting compounds: ",cmpd,sid
+        sentence[str(sid)]=self.erased
+        #print "Converting compounds: ",cmpd,sid
         #print sentence.keys()
         for index in sentence.keys():
             if len(sentence[index])==self.arclength:
@@ -222,23 +253,37 @@ class CompoundFinder(Compounder):
                 if sentence[index][self.headpos]==str(sid):
             #      print "Found dependency on dependency"
                    sentence[index][self.headpos]=str(sid+1)
-        print "Complete"
+        #print "Complete"
 
         return sentence
 
-    def output_sentence(self,sentence):
+    def output_sentence(self,sentence,out):
         slength=len(sentence.keys())
         for i in range(0,slength):
             index=str(i)
 
             arc=sentence.get(index,None)
             if arc!=None:
-                self.outstream.write(index)
-                for value in sentence[index]:
-                    self.outstream.write("\t"+str(value))
-                self.outstream.write("\n")
+                out.write(index)
+                for value in self.aptTransform(arc):
+                    out.write("\t"+str(value))
+                out.write("\n")
 
-        self.outstream.write("\n")
+        out.write("\n")
+
+    def aptTransform(self,arc):
+    #ptype=conll7: arc = [form,lemma,POS,NER,head,rel]
+
+    #aptInput requires: arc = [form/POS,head,rel]
+        if self.ptype=="conll7" or self.ptype=="nyt":
+            return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),arc[self.headpos],arc[self.relname]]
+        else:
+            return arc
+
+    def getPosTag(self,tag):
+        newtag=tag[0]
+        if newtag in CompoundFinder.postags: return newtag
+        else: return "F"
 
     def process_sentence(self,sentence):
         #do not know relation name or Pos tags
@@ -268,12 +313,9 @@ class CompoundFinder(Compounder):
 
 
     def run(self):
-
-        if self.convert:
-            self.outstream = open(self.corpusfile+".compounds","w")
         self.process_corpus()
-        if self.convert:
-            self.outstream.close()
+
+
 
 if __name__=="__main__":
     myCompoundFinder=CompoundFinder(sys.argv[1])
