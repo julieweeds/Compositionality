@@ -266,7 +266,7 @@ class CompoundFinder(Compounder):
         if self.ptype=="conll7" or self.ptype=="nyt":
             return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
         else:
-            return arc
+            return [getLex(arc[self.lex])+"/"+getPos(arc[self.lex]),int(arc[self.headpos])+index_adj,arc[self.relname]]
 
     def getPosTag(self,tag):
         newtag=tag[0]
