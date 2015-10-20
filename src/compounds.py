@@ -9,13 +9,13 @@ def getPos(word):
     except:
         return word.split('/')[1]
 
-def getLex(word,delim='/',postagged=True):
+def getLex(word,delim='/',postagged=True,tdelim=' '):
     if postagged:
-        tokens=word.split(' ')
+        tokens=word.split(tdelim)
         lex=tokens[0].split(delim)[0].lower()
         if len(tokens)>1:
             for token in tokens[1:]:
-                lex += " "+token.split(delim)[0].lower()
+                lex += tdelim+token.split(delim)[0].lower()
         return lex
     else:
         return word

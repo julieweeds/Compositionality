@@ -193,9 +193,9 @@ class CompoundFinder(Compounder):
 
                         if self.convert: sentence=self.convert_compounds(sentence,sid)
                         self.cont+=1
-                        #if self.counts[candkey]==1:
-                        #    print "First found compound: line "+str(self.lines)
-                        #    print i, arc, sentence[str(sid+1)],sentence[arc[self.headpos]]
+                        if self.counts[candkey]==1:
+                            print "First found compound: line "+str(self.lines)
+                            print i, arc, sentence[str(sid+1)],sentence[arc[self.headpos]]
 
                         if self.postagged:
                             deppos=getPos(arc[self.lex])
@@ -266,7 +266,7 @@ class CompoundFinder(Compounder):
         if self.ptype=="conll7" or self.ptype=="nyt":
             return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
         else:
-            return [getLex(arc[self.lex])+"/"+getPos(arc[self.lex]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+            return [getLex(arc[self.lex],tdelim='_')+"/"+getPos(arc[self.lex]),int(arc[self.headpos])+index_adj,arc[self.relname]]
 
     def getPosTag(self,tag):
         newtag=tag[0]
