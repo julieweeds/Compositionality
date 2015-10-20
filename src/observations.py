@@ -221,10 +221,10 @@ class CompoundFinder(Compounder):
         if self.convert: self.output_sentence(sentence, self.outstream)
 
     def convert_compounds(self,sentence,sid):
-        cmpd=sentence[str(sid)][self.lex]+"_"+sentence[str(sid+1)][self.lex]
+        cmpd=sentence[str(sid)][self.lex]+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][self.lex]
         sentence[str(sid+1)][self.lex]=cmpd
         if self.lemma>-1:
-            sentence[str(sid+1)][self.lemma]=sentence[str(sid)][self.lemma]+"_"+sentence[str(sid+1)][self.lemma]
+            sentence[str(sid+1)][self.lemma]=sentence[str(sid)][self.lemma]+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][self.lemma]
 
         sentence[str(sid)]=self.erased
         #print "Converting compounds: ",cmpd,sid
@@ -266,7 +266,7 @@ class CompoundFinder(Compounder):
         if self.ptype=="conll7" or self.ptype=="nyt":
             return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
         else:
-            return [getLex(arc[self.lex],tdelim='_')+"/"+getPos(arc[self.lex]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+            return [getLex(arc[self.lex],tdelim='|')+"/"+getPos(arc[self.lex]),int(arc[self.headpos])+index_adj,arc[self.relname]]
 
     def getPosTag(self,tag):
         newtag=tag[0]
