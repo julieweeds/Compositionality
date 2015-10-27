@@ -112,7 +112,7 @@ class CompoundFinder(Compounder):
             os.chdir(indir)
             for datafile in [df for df in os.listdir(indir)]:
                 print "Processing ", datafile
-                if datafile.contains(".clean.") or datafile.endswith(".compounds."):
+                if datafile.endswith(".clean") or datafile.endswith(".compounds") or datafile.endswith(".clean.gz") or datafile.endswith(".compounds.gz"):
                     pass
                 else:
                     self.process_file(file=datafile)
