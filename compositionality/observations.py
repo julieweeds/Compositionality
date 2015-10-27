@@ -4,7 +4,7 @@ import sys
 import os
 import ast
 
-import numpy as np
+import numpy as np, gzip
 
 from compounds import Compounder, getLex, getPos
 
@@ -54,36 +54,48 @@ class CompoundFinder(Compounder):
 
     def process_file(self,file=""):
         if file=="":file=self.corpusfile
-        if self.convert:
-            self.outstream = open(file+".compounds","w")
-        if self.clean:
-            self.cleanstream = open(file+".clean","w")
 
-        with open(file) as fp:
-            sentencebuffer={}
+        if file.endswith(".gz"):
+            fp = gzip.open(file)
+            if self.convert:
+                self.outstream=gzip.open(file[0:-3]+".compounds"+".gz","w")
+            if self.clean:
+                self.cleanstream=gzip.open(file[0:-3]+".clean"+".gz","w")
 
-            for line in fp:
-                #need to load in sentence at a time and process each sentence
-                #need to be careful in case there are any dependencies on dependent
-                line=line.rstrip()
-                fields=line.split('\t')
-                if len(fields)==self.arclength+1:
-                    sentencebuffer[fields[0]]=fields[1:]
+        else:
+            fp = open(file)
+            if self.convert:
+                self.outstream = open(file+".compounds","w")
+            if self.clean:
+                self.cleanstream = open(file+".clean","w")
+
+
+        sentencebuffer={}
+
+        for line in fp:
+            #need to load in sentence at a time and process each sentence
+            #need to be careful in case there are any dependencies on dependent
+            line=line.rstrip()
+            fields=line.split('\t')
+            if len(fields)==self.arclength+1:
+                sentencebuffer[fields[0]]=fields[1:]
+            else:
+                if len(fields)==self.minlength+1:
+                    arc=fields[1:]+self.extra
+                    sentencebuffer[fields[0]]=arc
                 else:
-                    if len(fields)==self.minlength+1:
-                        arc=fields[1:]+self.extra
-                        sentencebuffer[fields[0]]=arc
+                    if self.contiguous:
+                        self.process_sentence_contiguous(sentencebuffer)
                     else:
-                        if self.contiguous:
-                            self.process_sentence_contiguous(sentencebuffer)
-                        else:
-                            self.process_sentence(sentencebuffer)
-                        sentencebuffer={}
-                self.lines+=1
-                if self.lines%1000000==0:
-                    print "Processed "+str(self.lines)+" lines"
-                    print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"
-                    print "Found "+str(self.non_zero(list=self.countrel.values()))+" with dependency relationship"
+                        self.process_sentence(sentencebuffer)
+                    sentencebuffer={}
+            self.lines+=1
+            if self.lines%1000000==0:
+                print "Processed "+str(self.lines)+" lines"
+                print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"
+                print "Found "+str(self.non_zero(list=self.countrel.values()))+" with dependency relationship"
+
+        fp.close()
 
         if self.convert:
             self.outstream.close()
@@ -100,7 +112,7 @@ class CompoundFinder(Compounder):
             os.chdir(indir)
             for datafile in [df for df in os.listdir(indir)]:
                 print "Processing ", datafile
-                if datafile.endswith(".clean") or datafile.endswith(".compounds"):
+                if datafile.contains(".clean.") or datafile.endswith(".compounds."):
                     pass
                 else:
                     self.process_file(file=datafile)
