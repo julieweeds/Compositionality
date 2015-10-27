@@ -6,7 +6,7 @@ import ast
 
 import numpy as np
 
-from compositionality.compounds import Compounder, getLex, getPos
+from compounds import Compounder, getLex, getPos
 
 
 class CompoundFinder(Compounder):
