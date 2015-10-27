@@ -131,12 +131,25 @@ class Compound:
 
         return lines
 
+    def generate(self,rel_list):
+        self.compounds={}
+        for rel in rel_list:
+            acompound=self.getFirst()+"|"+rel+"|"+self.getSecond()+"/N"
+            self.compounds[rel]=acompound
+
     def display(self):
         for line in self.getConll():
             print line
         print "Non-Compositionality",self.getScore()
         print "-----"
 
+    def display_compounds(self):
+        for value in self.compounds.values():
+            print value
+
+    def write_compounds_to_file(self,outpath):
+        for value in self.compounds.values():
+            outpath.write(value+"\n")
 
 class Compounder:
 
@@ -208,6 +221,22 @@ class Compounder:
                         print "Error: Duplicate noun compound"
 
 
+    def generate(self,rel_list,outfile=""):
+        self.readcompounds()
+        self.generated_compounds=[]
+        if outfile != "":
+            outpath=open(outfile,"w")
+
+        for compound in self.compounds.values():
+            compound.generate(rel_list)
+            self.generated_compounds+=compound.compounds.values()
+            if outfile=="":
+                compound.display_compounds()
+            else:
+                compound.write_compounds_to_file(outpath)
+
+        if outfile != "":
+            outpath.close()
 
     def run(self):
 
