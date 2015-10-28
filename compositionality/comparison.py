@@ -4,6 +4,9 @@ __author__ = 'juliewe'
 import compounds,sys, ConfigParser,ast, nouncompounds
 import numpy as np, scipy.sparse as sparse
 
+def isAny(token):
+    return True
+
 class WordVector:
 
     def __init__(self,token):
@@ -48,44 +51,19 @@ class WordVector:
         return sim
 
 
+class SimEngine():
 
-class Comparator():
-
-    def __init__(self,configfile):
-        self.config=ConfigParser.RawConfigParser()
-        self.config.read(configfile)
+    def __init__(self,filename_dict,include_function=isAny):
+        self.filenames=filename_dict
         self.vectors={} #dictionaries of vectors
-        self.vectors['observed']={}
-        self.allfeatures={} #dictioray of all features observed - needed for matrix generation
-        self.fk_idx={} #feature--> dimension
-
-        self.exp_type=self.config.get('default','exp_type') # set this to anything other than 'compounds' if not wanting to load the phrasal compounds and use other config options
-        self.filenames={}
-        self.filenames['observed']=self.config.get('default','observedfile')
-
-        if self.exp_type=="compounds":
-            self.setup_compounds_exp(configfile)
-
-    def setup_compounds_exp(self,configfile):
-        self.compounder=compounds.Compounder(configfile)
-        self.composer = nouncompounds.NounCompounder(["config",configfile])
-        self.rels=ast.literal_eval(self.config.get('default','rels'))
-        self.testcompoundfile=self.config.get('compounder','compound_file')
-        self.vectors['composed']={}
-
-        self.reducestring={}
-        self.reducestring['observed']=".nouns.reduce_1_1"
-        self.normstring=".filtered"
-        if self.composer.normalised:
-            self.normstring+=".norm"
-        if self.composer.weighting in ['smooth_ppmi','ppmi','pnppmi','gof_ppmi']:
-            self.weightingstring="."+self.composer.weighting
-        else: self.weightstring=""
-
+        self.allfeatures={} #dictionary of all features observed for matrix generation
+        self.fk_idx={} #feature --> dimension
+        self.include_fn=include_function
         for type in self.filenames.keys():
-            self.filenames[type]=self.filenames[type]+self.reducestring.get(type,"")+self.normstring+self.weightingstring
+            self.vectors[type]={}
 
-    def load(self,type):
+
+    def load(self,type,exp_type="simple"):
 
         vectorfile=self.filenames[type]
 
@@ -95,29 +73,14 @@ class Comparator():
                 fields=line.split('\t')
                 token=fields[0]
                 featurelist=fields[1:]
-                if self.include(token,type):
+                if self.include(token):
                     self.createvector(token,featurelist,type)
                 else:
                     #print "Ignoring : "+token
                     pass
 
-    def include(self,token,type):
-
-        if self.exp_type==('compounds'):
-
-            if len(token.split('|'))==3:
-                if token in self.compounder.generated_compounds:
-                    return True
-            return False
-        elif self.exp_type==('simple_compounds'):
-            if len(token.split('|'))==3:
-                return True
-            else:
-                return False
-
-        return True
-
-
+    def include(self,token):
+        return self.include_fn(token)
 
     def createvector(self,token,featurelist,type):
         self.vectors[type][token]=WordVector(token)
@@ -131,7 +94,7 @@ class Comparator():
 
     def makematrix(self):
         fkeys=self.allfeatures.keys()
-        fkeys.sort()
+        fkeys.sort()  #don't actually need to sort - but makes the indexing more predictable
         for i in range(len(fkeys)):
             self.fk_idx[fkeys[i]]=i
 
@@ -144,23 +107,77 @@ class Comparator():
             for wordvector in self.vectors[type].values():
                 wordvector.makearray(self.fk_idx)
 
+    def allpairs(self):
+        for type in self.vectors.keys():
+            for wordA in self.vectors[type].keys():
+                for wordB in self.vectors[type].keys():
+                    sim=self.vectors[type][wordA].cosine(self.vectors[type][wordB])
+                    print "cosine(%s,%s) = %s [%s]"%(wordA,wordB,str(sim),type)
 
-    def test1(self):
 
-        for wordA in self.vectors["observed"].keys():
-            for wordB in self.vectors["observed"].keys():
-                sim=self.vectors["observed"][wordA].cosine(self.vectors["observed"][wordB])
-                print "Cosine("+wordA+","+wordB+") = "+str(sim)
+    def run(self):
+        for type in self.filenames.keys():
+            self.load(type)
+            print "Loaded %s vectors" %(str(len(self.vectors['observed'].keys())))
+        print "Converting to matrix form"
+        self.makematrix() #sparse array generation
+        self.allpairs()
+
+class Comparator():
+
+    def __init__(self,configfile):
+        self.config=ConfigParser.RawConfigParser()
+        self.config.read(configfile)
+
+        self.exp_type=self.config.get('default','exp_type') # set this to anything other than 'compounds' if not wanting to load the phrasal compounds and use other config options
+        self.filenames={}
+        self.filenames['observed']=self.config.get('default','observedfile')
+        if self.exp_type=="compounds":
+            self.setup_compounds_exp(configfile)
+        self.mySimEngine=self.generate_SimEngine()
+
+    def setup_compounds_exp(self,configfile):
+        self.compounder=compounds.Compounder(configfile)
+        self.composer = nouncompounds.NounCompounder(["config",configfile])
+        self.rels=ast.literal_eval(self.config.get('default','rels'))
+        self.testcompoundfile=self.config.get('compounder','compound_file')
+
+        self.reducestring={}
+        self.reducestring['observed']=".nouns.reduce_1_1"
+        self.normstring=".filtered"
+        if self.composer.normalised:
+            self.normstring+=".norm"
+        if self.composer.weighting in ['smooth_ppmi','ppmi','pnppmi','gof_ppmi']:
+            self.weightingstring="."+self.composer.weighting
+        else: self.weightstring=""
+
+        for type in self.filenames.keys():
+            self.filenames[type]=self.filenames[type]+self.reducestring.get(type,"")+self.normstring+self.weightingstring
+
+    def generate_SimEngine(self):
+
+        simEngine=SimEngine(self.filenames)
+
+        if self.exp_type==('compounds'):
+            simEngine=SimEngine(self.filenames,self.isListedCompound)
+        elif self.exp_type==('simple_compounds'):
+            simEngine=SimEngine(self.filenames,self.isCompound)
+
+        return simEngine
+
+    def isCompound(self,token):
+        return len(token.split('|'))==3
+
+    def isListedCompound(self,token):
+        return len(token.split('|'))==3 and token in self.compounder.generated_compounds
+
 
     def run(self):
         if self.exp_type=='compounds':
             self.compounder.generate(self.rels,outfile=self.testcompoundfile)
             print self.compounder.generated_compounds
+        self.mySimEngine.run()
 
-        self.load('observed')
-        print "Loaded %s vectors, converting to matrix form" %(str(len(self.vectors['observed'].keys())))
-        self.makematrix() #sparse array generation
-        self.test1()
 
 
 if __name__=="__main__":
