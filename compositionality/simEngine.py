@@ -69,6 +69,7 @@ class SimEngine():
             print "Loaded %s vectors from file %s" %(str(len(self.vectors[type].keys())),type)
         print "Converting to matrix form"
         self.makematrix() #sparse array generation
+        print "Completed matrix generation"
 
     def load(self,type):
 
@@ -114,13 +115,52 @@ class SimEngine():
             for wordvector in self.vectors[type].values():
                 wordvector.makearray(self.fk_idx)
 
-    def allpairs(self):
+    def allpairs(self,outstream=None):
+
+        todo=0
+        for typeA in self.vectors.keys():
+            todo+=pow(len(self.vectors[typeA].keys()),2)
+
+        done=0
+
         for type in self.vectors.keys():
             for wordA in self.vectors[type].keys():
                 for wordB in self.vectors[type].keys():
                     sim=self.vectors[type][wordA].cosine(self.vectors[type][wordB])
-                    print "cosine(%s,%s) = %s [%s]"%(wordA,wordB,str(sim),type) #probably want to pipe this to a file
+                    if outstream==None:
+                        print "cosine(%s,%s) = %s [%s]"%(wordA,wordB,str(sim),type)
+                    else:
+                        outstream.write("%s\t%s\t%s\t%s\n"%(type,wordA,wordB,str(sim)))
+                    done+=1
+                    if (done%10000)==0:
+                        percentage=done*100.0/todo
+                        print "Completed %s calculations = %s percent"%(str(done),str(percentage))
 
+
+    def pointwise(self,outstream=None):
+
+        todo=0
+        for typeA in self.vectors.keys():
+            todo+=len(self.vectors[typeA].keys())*2
+
+        done=0
+        for typeA in self.vectors.keys():
+            for typeB in self.vectors.keys():
+                for wordA in self.vectors[typeA].keys():
+                    vectorB=self.vectors[typeB].get(wordA,None)
+                    if vectorB==None:
+                        sim=0.0
+                    else:
+                        sim = self.vectors[typeA][wordA].cosine(vectorB)
+                    if outstream==None:
+                        print "cosine(%s_[%s],%s_[%s]) = %s"%(wordA,typeA,wordA,typeB,str(sim))
+                    else:
+                        outstream.write("%s\t%s\t%s\t%s\n"%(wordA,typeA,typeB,str(sim)))
+
+                    done+=1
+                    if (done%10000)==0:
+                        percentage=done*100.0/todo
+                        print "Completed %s calculations = %s percent"%(str(done),str(percentage))
 
 if __name__=="__main__":
 
@@ -130,4 +170,19 @@ if __name__=="__main__":
         filename_dict[str(key)]=filename
         key+=1
     mySimEngine=SimEngine(filename_dict)
-    mySimEngine.allpairs()
+
+    outfilename="testout"
+
+    if outfilename!="":
+        outstream=open(outfilename,"w")
+    else:
+        outstream=None
+
+    if len(filename_dict.keys())==1:
+        mySimEngine.allpairs(outstream)
+    else:
+        mySimEngine.pointwise(outstream)
+
+
+    if outstream!=None:
+        outstream.close()
