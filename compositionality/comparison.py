@@ -15,7 +15,10 @@ class Comparator():
         self.filenames['observed']=self.config.get('default','observedfile')
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
-        self.mySimEngine=self.generate_SimEngine()
+            self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
+            print self.compounder.generated_compounds
+
+        self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
     def setup_compounds_exp(self,configfile):
         self.compounder=compounds.Compounder(configfile)
@@ -53,9 +56,12 @@ class Comparator():
 
     def run(self):
         if self.exp_type=='compounds':
-            self.compounder.generate(self.rels,outfile=self.testcompoundfile)
-            print self.compounder.generated_compounds
-        self.mySimEngine.allpairs()
+            self.composer.run()  #run composer to create composed vectors
+            self.mySimEngine.addfile("composed",self.composer.outfile)  #add composed vector file to SimEngine
+            with open("testout","w") as outstream:
+                self.mySimEngine.pointwise(outstream)
+        else:
+            self.mySimEngine.allpairs()
 
 
 

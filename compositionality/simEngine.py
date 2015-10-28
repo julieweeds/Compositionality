@@ -54,7 +54,7 @@ class SimEngine():
     #requires a dictionary of filenames (anyRefKey->filename) for initialisation
     #optionally also an include_function - otherwise all vectors will be loaded from all files
     #allpairs similarities is cosine similarity within each file
-    #todo: pointwise similarities is for same key from different files e.g., to compare composed with observed vectors
+    #pointwise similarities is for same key from different files e.g., to compare composed with observed vectors
 
     def __init__(self,filename_dict,include_function=isAny):
         self.filenames=filename_dict
@@ -66,10 +66,9 @@ class SimEngine():
             self.vectors[type]={}
         for type in self.filenames.keys():
             self.load(type)
-            print "Loaded %s vectors from file %s" %(str(len(self.vectors[type].keys())),type)
-        print "Converting to matrix form"
-        self.makematrix() #sparse array generation
-        print "Completed matrix generation"
+
+        self.madematrix=False
+
 
     def load(self,type):
 
@@ -86,6 +85,13 @@ class SimEngine():
                 else:
                     #print "Ignoring : "+token
                     pass
+        print "Loaded %s vectors from file with key: %s" %(str(len(self.vectors[type].keys())),type)
+
+    def addfile(self,key, filename):
+        self.filenames[key]=filename
+        self.vectors[key]={}
+        self.load(key)
+        self.madematrix=False  #matrix must be remade
 
     def include(self,token):
         return self.include_fn(token)
@@ -101,6 +107,8 @@ class SimEngine():
             self.allfeatures[f]=1
 
     def makematrix(self):
+
+        print "Converting to matrix form"
         fkeys=self.allfeatures.keys()
         fkeys.sort()  #don't actually need to sort - but makes the indexing more predictable
         for i in range(len(fkeys)):
@@ -114,8 +122,13 @@ class SimEngine():
         for type in self.vectors.keys():
             for wordvector in self.vectors[type].values():
                 wordvector.makearray(self.fk_idx)
+        print "Completed matrix generation"
+        self.madematrix=True
 
     def allpairs(self,outstream=None):
+
+        if not self.madematrix:
+            self.makematrix()
 
         todo=0
         for typeA in self.vectors.keys():
@@ -138,6 +151,9 @@ class SimEngine():
 
 
     def pointwise(self,outstream=None):
+
+        if not self.madematrix:
+            self.makematrix()
 
         todo=0
         for typeA in self.vectors.keys():
