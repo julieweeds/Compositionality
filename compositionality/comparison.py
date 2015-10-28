@@ -52,6 +52,11 @@ class WordVector:
 
 
 class SimEngine():
+    #holds dictionary of vectors - manages conversion to sparse arrays and similarity calculations
+    #requires a dictionary of filenames (anyRefKey->filename) for initialisation
+    #optionally also an include_function - otherwise all vectors will be loaded from all files
+    #allpairs similarities is cosine similarity within each file
+    #pointwise similarities is for same key from different files e.g., to compare composed with observed vectors
 
     def __init__(self,filename_dict,include_function=isAny):
         self.filenames=filename_dict
