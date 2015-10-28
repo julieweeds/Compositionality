@@ -63,7 +63,7 @@ class SimEngine():
             self.vectors[type]={}
 
 
-    def load(self,type,exp_type="simple"):
+    def load(self,type):
 
         vectorfile=self.filenames[type]
 
