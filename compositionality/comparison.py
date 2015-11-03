@@ -5,6 +5,8 @@ import compounds,sys, ConfigParser,ast, nouncompounds
 from simEngine import SimEngine
 
 class Comparator():
+    key1="observed"
+    key2="composed"
 
     def __init__(self,configfile):
         self.config=ConfigParser.RawConfigParser()
@@ -12,7 +14,7 @@ class Comparator():
 
         self.exp_type=self.config.get('default','exp_type') # set this to anything other than 'compounds' if not wanting to load the phrasal compounds and use other config options
         self.filenames={}
-        self.filenames['observed']=self.config.get('default','observedfile')
+        self.filenames[Comparator.key1]=self.config.get('default','observedfile')
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
             self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
@@ -27,7 +29,7 @@ class Comparator():
         self.testcompoundfile=self.config.get('compounder','compound_file')
 
         self.reducestring={}
-        self.reducestring['observed']=".nouns.reduce_1_1"
+        self.reducestring[Comparator.key1]=".nouns.reduce_1_1"
         self.normstring=".filtered"
         if self.composer.normalised:
             self.normstring+=".norm"
@@ -54,12 +56,26 @@ class Comparator():
         return len(token.split('|'))==3 and token in self.compounder.generated_compounds
 
 
+    def correlate(self,instream):
+
+        for line in instream:
+            line=line.rstrip()
+            fields=line.split('\t')
+            if fields[1]==Comparator.key1 and fields[2]== Comparator.key2:
+                self.compounder.addAutoSim(fields[0],fields[3])
+
+        self.compounder.correlate()
+
+
     def run(self):
         if self.exp_type=='compounds':
             self.composer.run()  #run composer to create composed vectors
-            self.mySimEngine.addfile("composed",self.composer.outfile)  #add composed vector file to SimEngine
+            self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
             with open("testout","w") as outstream:
                 self.mySimEngine.pointwise(outstream)
+
+            with open("testout",'r') as instream:
+                self.correlate(instream)
         else:
             self.mySimEngine.allpairs()
 

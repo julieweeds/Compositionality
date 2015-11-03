@@ -280,7 +280,6 @@ class Composition:
         else:
             fields=path.split("\xc2\xbb")
 
-
             if len(fields)>1:
                 text=fields[1]
                 if len(fields)>2:
@@ -327,9 +326,7 @@ class Composition:
         except:
             instream=open(self.inpath)
 
-
-        lines=0
-        for line in instream:
+        for lines,line in enumerate(instream):
 
             line=line.rstrip()
             entry=line.split("\t")[0]
@@ -352,7 +349,6 @@ class Composition:
             else:
                 others.write(line+"\n")
             if lines % 1000==0:print "Processed "+str(lines)+" lines"
-            lines+=1
 
         nouns.close()
         verbs.close()
@@ -377,11 +373,9 @@ class Composition:
         outfile=infile+self.reducedstring
         with open(outfile,"w") as outstream:
             with open(infile) as instream:
-                lines=0
-                for line in instream:
+                for lines, line in enumerate(instream):
                     line=line.rstrip()
-                    print "Processing line "+str(lines)
-                    lines+=1
+                    if lines % 1000==0:print "Processing line "+str(lines)
                     fields=line.split("\t")
                     entry=fields[0]
                     features=fields[1:]
@@ -395,7 +389,7 @@ class Composition:
                         if forder>=self.minorder and forder<=self.maxorder:
                             outline+="\t"+feat+"\t"+freq
                             nofeats+=1
-                    print entry, nofeats
+                    #print entry, nofeats
                     if nofeats>0:
                         outstream.write(outline+"\n")
                         #print "written out"
@@ -421,11 +415,9 @@ class Composition:
 
         featuretotals={}
         with open(infile) as instream:
-            lines=0
-            for line in instream:
+            for lines,line in enumerate(instream):
 
                 if lines%1000==0:print "Processing line "+str(lines)
-                lines+=1
                 rowtotal=0.0
                 line=line.rstrip()
                 fields=line.split("\t")
@@ -526,13 +518,12 @@ class Composition:
         print "Filtering for frequency ",self.filterfreq
         todo=len(rowtotals)
         with open(infile) as instream:
-            lines=0
-            for line in instream:
+
+            for lines,line in enumerate(instream):
                 line = line.rstrip()
                 if lines%1000==0:
                     percent=lines*100.0/todo
                     print "Processing line "+str(lines)+"("+str(percent)+"%)"
-                lines+=1
                 fields=line.split("\t")
                 #entry=fields[0].lower()
                 entry=fields[0]
@@ -577,8 +568,7 @@ class Composition:
         todo=len(rowtotals.keys())
         print "Estimated total vectors to do = "+str(todo)
         with open(infile) as instream:
-            lines=0
-            for line in instream:
+            for lines,line in enumerate(instream):
 
                 line = line.rstrip()
                 fields=line.split("\t")
@@ -593,7 +583,6 @@ class Composition:
                     outline+="\t"+feat+"\t"+str(weight)
                 outline+="\n"
                 outstream.write(outline)
-                lines+=1
                 if lines%1000==0:
                     percent=lines*100.0/todo
                     print "Completed "+str(lines)+" vectors ("+str(percent)+"%)"
@@ -612,9 +601,8 @@ class Composition:
         print "Loading vectors from: "+infile
         print "Words of interest: ",self.words
         with open(infile) as instream:
-            lines=0
-            for line in instream:
-                lines+=1
+
+            for lines,line in enumerate(instream):
                 if lines%1000==0: print "Reading line "+str(lines)
 
                 line=line.rstrip()

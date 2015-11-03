@@ -1,7 +1,7 @@
 __author__ = 'juliewe'
 #take in the list of noun compounds and generate other formats for composition etc
 
-import sys, ConfigParser
+import sys, ConfigParser, numpy as np, scipy.stats as stats
 
 def getPos(word):
     try:
@@ -20,6 +20,10 @@ def getLex(word,delim='/',postagged=True,tdelim=' '):
     else:
         return word
 
+def matchmake(phrase):
+    tokens=phrase.split('|')
+    return tokens[0]+" "+tokens[2],tokens[1]
+
 
 
 class Compound:
@@ -34,12 +38,16 @@ class Compound:
         #self.PoSes=[]
         self.counts=[]
         self.ctype=ctype
+        self.autosims={}
 
     def addJudgement(self,NC):
         self.judgements.append(NC)
 
     def setJudgements(self,NCs):
         self.judgements=[float(item) for item in NCs]
+
+    def addAutoSim(self,key,sim):
+        self.autosims[key]=float(sim)
 
     def addRel(self,rellist):
         found =False
@@ -103,6 +111,19 @@ class Compound:
         else:
             return sum(self.judgements)
 
+    def getAutoSim(self):
+        res=""
+        for key in self.autosims.keys():
+            res+=key+":"+str(self.autosims[key])+"\t"
+
+        return res
+
+    def getSimScore(self):
+        if len(self.autosims.values())>0:
+            return np.mean(self.autosims.values())
+        else:
+            return -1
+
     def getTotal(self):
         return sum(self.counts)
 
@@ -141,6 +162,7 @@ class Compound:
         for line in self.getConll():
             print line
         print "Non-Compositionality",self.getScore()
+        print "Automatic Similarity",self.getAutoSim()
         print "-----"
 
     def display_compounds(self):
@@ -237,6 +259,27 @@ class Compounder:
 
         if outfile != "":
             outpath.close()
+
+    def addAutoSim(self,compound,sim):
+        phrase,type = matchmake(compound.split('/')[0])
+        print phrase
+        if phrase in self.compounds.keys():
+            self.compounds[phrase].addAutoSim(type,sim)
+
+    def correlate(self):
+        listX=[]
+        listY=[]
+        for compound in self.compounds.values():
+            compound.display()
+            if compound.getSimScore()>-1:
+                listX.append(compound.getScore())
+                listY.append(compound.getSimScore())
+
+
+        print listX
+        print listY
+        print stats.spearmanr(np.array(listX),np.array(listY))
+
 
     def run(self):
 
