@@ -52,6 +52,7 @@ class Composition:
 
     def __init__(self,options):
 
+        print options
         if options[0] == "config":
             self.configure(options[1]) # configure via configuration file
         else:
