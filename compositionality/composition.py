@@ -547,7 +547,8 @@ class Composition:
                     if nofeats>0:
                         outstream.write(outline+"\n")
                 else:
-                    print "Ignoring "+entry+" with frequency "+str(entrytot)
+                    pass
+                    #print "Ignoring "+entry+" with frequency "+str(entrytot)
 
         outstream.close()
 
@@ -739,7 +740,7 @@ class Composition:
         todo=len(vecs.keys())
 
         for entry in vecs.keys():
-            print entry
+            #print entry
             ppmivector={}
 
             vector=vecs[entry]

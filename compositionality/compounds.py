@@ -2,6 +2,13 @@ __author__ = 'juliewe'
 #take in the list of noun compounds and generate other formats for composition etc
 
 import sys, ConfigParser, numpy as np, scipy.stats as stats
+try:
+    import graphing
+    graphing_loaded=True
+except:
+    print "Warning: unable to load graphing module"
+    graphing_loaded=False
+
 
 def getPos(word):
     try:
@@ -276,10 +283,12 @@ class Compounder:
                 listY.append(compound.getSimScore())
 
 
-        print listX
-        print listY
-        print stats.spearmanr(np.array(listX),np.array(listY))
+        #print listX
+        #print listY
 
+        print "Spearman's Correlation Coefficient and p'value over %s values: "%(str(len(listX))),stats.spearmanr(np.array(listX),np.array(listY))
+        if graphing_loaded:
+            graphing.makescatter(listX,listY)
 
     def run(self):
 

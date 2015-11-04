@@ -52,6 +52,11 @@ def filter(adict,max):
         return bdict
     else:
         return adict
+
+def makescatter(XList,YList):
+    plt.scatter(XList,YList)
+    plt.show()
+
 if __name__=="__main__":
     testdict={"dep\xc2\xbbparataxis":10,"dep":1413,"mod":307}
     display_bargraph(testdict,"A bar chart",max=2)
