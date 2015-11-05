@@ -55,13 +55,13 @@ def getpathvalue(feature):
 #----
 #get the order of a given feature
 #----
-def getorder(feature):
+def getorder(feature,delim="\xc2\xbb"):
     path=getpathtype(feature)
 
     if path=="":
         order=0
     else:
-        fields=path.split("\xc2\xbb")
+        fields=path.split(delim)
         order=len(fields)
 
     return order
@@ -73,19 +73,19 @@ def getorder(feature):
 #2nd order e.g., _dobj>>amod:red => return ("_dobj","amod:red:)
 #3rd order e.g., nsubj>>_dobj>>amod:red => return ("nsubj","dobj>>amod:red")
 #----
-def splitfeature(feature):
+def splitfeature(feature,delim="\xc2\xbb"):
     path=getpathtype(feature)
 
     if path=="":
         return "",""
     else:
-        fields=path.split("\xc2\xbb")
+        fields=path.split(delim)
 
         if len(fields)>1:
             text=fields[1]
             if len(fields)>2:
                 for field in fields[2:]:
-                    text+="\xc2\xbb"+field
+                    text+=delim+field
             return fields[0],text
         else:
             return fields[0],""
@@ -236,6 +236,11 @@ class Composition:
             self.display=(self.config.get('default','display')=='True')
         except:
             self.display=Composition.display
+
+        try:
+            self.pathdelim=self.config.get('default','path_delim')
+        except:
+            self.pathdelim="?"
         return
     #----HELPER FUNCTIONS
 
@@ -325,7 +330,7 @@ class Composition:
     #get the order of a given feature
     #----
     def getorder(self,feature):
-        return getorder(feature)
+        return getorder(feature,delim=self.pathdelim)
 
     #---
     #split a higher order feature / find path prefix
@@ -335,7 +340,7 @@ class Composition:
     #3rd order e.g., nsubj>>_dobj>>amod:red => return ("nsubj","dobj>>amod:red")
     #----
     def splitfeature(self,feature):
-        return splitfeature(feature)
+        return splitfeature(feature,delim=self.pathdelim)
 
     #---
     #turn alist into a string concatenated using the achar

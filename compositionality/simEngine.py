@@ -61,7 +61,7 @@ class SimEngine():
     maxorder=1 #maximum order to be used in simiarity calculations
 
 
-    def __init__(self,filename_dict,include_function=isAny):
+    def __init__(self,filename_dict,include_function=isAny,pathdelim="?"):
         self.filenames=filename_dict
         self.vectors={} #dictionaries of vectors
         self.allfeatures={} #dictionary of all features observed for matrix generation
@@ -74,6 +74,7 @@ class SimEngine():
 
         self.madematrix=False
 
+        self.pathdelim=pathdelim
 
     def load(self,type):
 
@@ -108,7 +109,7 @@ class SimEngine():
         while (len(featurelist)>0):
             f=featurelist.pop()
             sc=featurelist.pop()
-            forder=getorder(f)
+            forder=getorder(f,delim=self.pathdelim)
 
             if forder>=SimEngine.minorder and forder<=SimEngine.maxorder: #filter features by path length
                 self.vectors[type][token].addfeature(f,sc)
