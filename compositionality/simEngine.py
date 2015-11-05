@@ -1,6 +1,7 @@
 __author__ = 'juliewe'
 
 import numpy as np, scipy.sparse as sparse,sys
+from composition import getorder
 
 def isAny(token):
     return True
@@ -56,6 +57,10 @@ class SimEngine():
     #allpairs similarities is cosine similarity within each file
     #pointwise similarities is for same key from different files e.g., to compare composed with observed vectors
 
+    minorder=1 #minimum order to be used in similarity calculations
+    maxorder=1 #maximum order to be used in simiarity calculations
+
+
     def __init__(self,filename_dict,include_function=isAny):
         self.filenames=filename_dict
         self.vectors={} #dictionaries of vectors
@@ -103,8 +108,11 @@ class SimEngine():
         while (len(featurelist)>0):
             f=featurelist.pop()
             sc=featurelist.pop()
-            self.vectors[type][token].addfeature(f,sc)
-            self.allfeatures[f]=1
+            forder=getorder(f)
+
+            if forder>=SimEngine.minorder and forder<=SimEngine.maxorder: #filter features by path length
+                self.vectors[type][token].addfeature(f,sc)
+                self.allfeatures[f]=1
 
     def makematrix(self):
 

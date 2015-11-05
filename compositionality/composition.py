@@ -28,8 +28,85 @@ except ImportError,IOError:
     print "Warning: Unable to import yaml for reading composition pair file"
 
 
-class Composition:
+#functions on features
+#----
+#get the path prefix / dependency path of a given feature
+#self.getpathtype("amod:red") = amod
+#self.getpathtype("_dobj>>amod:red") = _dobj>>amod
+#----
+def getpathtype(feature):
+    #get the path of a given feature
+    fields=feature.split(":")
+    return fields[0]
 
+#----
+#get the path value of a given feature
+#self.getpathvalue("amod:red")=red
+#self.getpathvalue("_dobj>>amod:red") = red
+#----
+def getpathvalue(feature):
+    fields=feature.split(":")
+    if len(fields)>1:
+        return ":"+fields[1]
+    else:
+        #print "No feature value for "+feature
+        return ""
+
+#----
+#get the order of a given feature
+#----
+def getorder(feature):
+    path=getpathtype(feature)
+
+    if path=="":
+        order=0
+    else:
+        fields=path.split("\xc2\xbb")
+        order=len(fields)
+
+    return order
+
+#---
+#split a higher order feature / find path prefix
+#0th order e.g., :red => return ("","")
+#1st order e.g., amod:red =>  return ("amod:red","")
+#2nd order e.g., _dobj>>amod:red => return ("_dobj","amod:red:)
+#3rd order e.g., nsubj>>_dobj>>amod:red => return ("nsubj","dobj>>amod:red")
+#----
+def splitfeature(feature):
+    path=getpathtype(feature)
+
+    if path=="":
+        return "",""
+    else:
+        fields=path.split("\xc2\xbb")
+
+        if len(fields)>1:
+            text=fields[1]
+            if len(fields)>2:
+                for field in fields[2:]:
+                    text+="\xc2\xbb"+field
+            return fields[0],text
+        else:
+            return fields[0],""
+
+#---
+#turn alist into a string concatenated using the achar
+#---
+def join (alist,achar):
+    if len(alist)>1:
+        astring=alist[0]
+        for element in alist[1:]:
+            astring+=achar+element
+        return astring
+
+    elif len(alist)==1:
+        return alist[0]
+    else:
+        return ""
+
+
+class Composition:
 
     nouns=[]
     adjectives=[]
@@ -234,9 +311,7 @@ class Composition:
     #self.getpathtype("_dobj>>amod:red") = _dobj>>amod
     #----
     def getpathtype(self,feature):
-        #get the path of a given feature
-        fields=feature.split(":")
-        return fields[0]
+        return getpathtype(feature)
 
     #----
     #get the path value of a given feature
@@ -244,26 +319,13 @@ class Composition:
     #self.getpathvalue("_dobj>>amod:red") = red
     #----
     def getpathvalue(self,feature):
-        fields=feature.split(":")
-        if len(fields)>1:
-            return ":"+fields[1]
-        else:
-            #print "No feature value for "+feature
-            return ""
+       return getpathvalue(feature)
 
     #----
     #get the order of a given feature
     #----
     def getorder(self,feature):
-        path=self.getpathtype(feature)
-
-        if path=="":
-            order=0
-        else:
-            fields=path.split("\xc2\xbb")
-            order=len(fields)
-
-        return order
+        return getorder(feature)
 
     #---
     #split a higher order feature / find path prefix
@@ -273,36 +335,13 @@ class Composition:
     #3rd order e.g., nsubj>>_dobj>>amod:red => return ("nsubj","dobj>>amod:red")
     #----
     def splitfeature(self,feature):
-        path=self.getpathtype(feature)
-
-        if path=="":
-            return "",""
-        else:
-            fields=path.split("\xc2\xbb")
-
-            if len(fields)>1:
-                text=fields[1]
-                if len(fields)>2:
-                    for field in fields[2:]:
-                        text+="\xc2\xbb"+field
-                return fields[0],text
-            else:
-                return fields[0],""
+        return splitfeature(feature)
 
     #---
     #turn alist into a string concatenated using the achar
     #---
     def join (self,alist,achar):
-        if len(alist)>1:
-            astring=alist[0]
-            for element in alist[1:]:
-                astring+=achar+element
-            return astring
-
-        elif len(alist)==1:
-            return alist[0]
-        else:
-            return ""
+        return join(alist,achar)
 
     #----MAIN FUNCTIONS
 
