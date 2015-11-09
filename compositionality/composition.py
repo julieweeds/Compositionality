@@ -529,7 +529,7 @@ class Composition:
             for line in instream:
                 line=line.rstrip()
                 fields=line.split("\t")
-                if self.normalised or float(fields[1])>self.filterfreq:
+                if self.normalised or float(fields[1])>self.filterfreq or self.phraseinclude(fields[0]):
                     totals[fields[0]]=float(fields[1])
         print "Loaded "+str(len(totals.keys()))
 
