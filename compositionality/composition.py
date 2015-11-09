@@ -117,6 +117,7 @@ class Composition:
     includedtypes=[]  #all types of relation will be considered if this is empty
     featmax=3  #how many features of each path type to display when showing most salient features
     display=True
+    allphrases=True  #include allphrases regardless of frequency
 
     ppmithreshold=0
     filterfreq=1000
@@ -238,10 +239,14 @@ class Composition:
             self.display=Composition.display
 
         try:
-            self.pathdelim=self.config.get('default','path_delim')
+            self.pathdelim=ast.literal_eval(self.config.get('default','path_delim'))
         except:
             self.pathdelim="?"
-        return
+
+        try:
+            self.allphrases=(self.config.get('default','allphrases')=='True')
+        except:
+            self.allphraser=Composition.allphrases
     #----HELPER FUNCTIONS
 
     #-----
@@ -293,6 +298,20 @@ class Composition:
             return True
         else:
             return False
+
+
+    #----
+    #boolean function to decide whether an entry is a phrase
+    #----
+    def phraseinclude(self,entry):
+        #do not want to filter out phrases even if low frequency
+        if self.allphrases:
+            if len(entry.split('|'))==3:
+                return True
+            else:
+                return False
+        else:
+            return False #don't use this functionality
 
     #---
     #boolean function as to whether a pathtype is in self.includedtypes or self.includedtypes=[]
@@ -574,7 +593,7 @@ class Composition:
                 features=fields[1:]
                 entrytot=rowtotals.get(entry,0)
                 nofeats=0
-                if entrytot>self.filterfreq and self.include(entry):
+                if self.phraseinclude(entry) or( entrytot>self.filterfreq and self.include(entry)):
                     outline=entry
                     #print "Filtering entry for "+entry
                     while len(features)>0:
@@ -1110,7 +1129,7 @@ class Composition:
             elif prefix=="":
                 newfeature=headPREFIX+feature
             else:
-                newfeature=headPREFIX+"\xc2\xbb"+feature
+                newfeature=headPREFIX+self.pathdelim+feature
             if not newfeature == "":
                 offsetvector[newfeature]=depvector[feature]
         #print "Features in original adj vector: "+str(len(adjvector.keys()))

@@ -67,6 +67,7 @@ class SimEngine():
         self.allfeatures={} #dictionary of all features observed for matrix generation
         self.fk_idx={} #feature --> dimension
         self.include_fn=include_function
+        self.pathdelim=pathdelim
         for type in self.filenames.keys():
             self.vectors[type]={}
         for type in self.filenames.keys():
@@ -74,7 +75,7 @@ class SimEngine():
 
         self.madematrix=False
 
-        self.pathdelim=pathdelim
+
 
     def load(self,type):
 

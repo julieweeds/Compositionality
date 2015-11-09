@@ -35,6 +35,8 @@ class Comparator():
             self.normstring+=".norm"
         if self.composer.weighting in ['smooth_ppmi','ppmi','pnppmi','gof_ppmi']:
             self.weightingstring="."+self.composer.weighting
+        if self.composer.ppmithreshold>0:
+            self.weightingstring+="_"+str(self.composer.ppmithreshold)
         else: self.weightstring=""
 
         for type in self.filenames.keys():
@@ -43,9 +45,9 @@ class Comparator():
     def generate_SimEngine(self):
 
         if self.exp_type==('compounds'):
-            simEngine=SimEngine(self.filenames,self.isListedCompound)
+            simEngine=SimEngine(self.filenames,self.isListedCompound,pathdelim=self.composer.pathdelim)
         elif self.exp_type==('simple_compounds'):
-            simEngine=SimEngine(self.filenames,self.isCompound)
+            simEngine=SimEngine(self.filenames,self.isCompound,pathdelim=self.composer.pathdelim)
 
         return simEngine
 
