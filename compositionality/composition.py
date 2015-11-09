@@ -241,7 +241,7 @@ class Composition:
         try:
             self.pathdelim=ast.literal_eval(self.config.get('default','path_delim'))
         except:
-            self.pathdelim="?"
+            self.pathdelim="\xc2\xbb"
 
         try:
             self.allphrases=(self.config.get('default','allphrases')=='True')
