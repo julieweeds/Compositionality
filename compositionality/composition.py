@@ -118,6 +118,7 @@ class Composition:
     featmax=3  #how many features of each path type to display when showing most salient features
     display=True
     allphrases=True  #include allphrases regardless of frequency
+    offsetting=False #offset the dependency vector before composition (False for baseline)
 
     ppmithreshold=0
     filterfreq=1000
@@ -247,6 +248,10 @@ class Composition:
             self.allphrases=(self.config.get('default','allphrases')=='True')
         except:
             self.allphraser=Composition.allphrases
+        try:
+            self.offsetting=(self.config.get('default','offsetting')=='True')
+        except:
+            self.offsetting=Composition.offsetting
     #----HELPER FUNCTIONS
 
     #-----
@@ -1073,8 +1078,10 @@ class Composition:
     #then add noun vector to adjective vector
     #----
     def addCompound(self,depvector,headvector,rel,nntest=False):
-
-        offsetvector = self.offsetVector(depvector,rel)
+        if self.offsetting:
+            offsetvector = self.offsetVector(depvector,rel)
+        else:
+            offsetvector=depvector
         if nntest:
             print offsetvector
             print "Offset vector nn: "+str(offsetvector.get('nn',"not present"))
