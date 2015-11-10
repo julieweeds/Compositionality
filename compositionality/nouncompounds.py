@@ -114,10 +114,10 @@ class NounCompounder(Composition):
     def runANcomposition(self):
         myvectors={}
         for rel in self.myCompounder.relindex.keys():
-            print "Adding feature totals"
-            self.ANfeattots=self.addCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel)  #C<*,t,f>
-            print "Adding type totals"
-            self.ANtypetots=self.addCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel)  #C<*,t,*>
+            print "Adding feature totals for "+rel
+            self.ANfeattots=self.addCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp)  #C<*,t,f>
+            print "Adding type totals for "+rel
+            self.ANtypetots=self.addCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp)  #C<*,t,*>
 
             self.ANvecs={}
             self.ANtots={}
@@ -126,9 +126,12 @@ class NounCompounder(Composition):
             for compound in self.myCompounder.relindex[rel]:
                 #should check not lower case for pos
                 try:
-                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel)
+                    #print "Composing: "+compound.text
+                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp)
+
                 except KeyError:
-                    print "Warning: 1 or more vectors not present for "+compound.text
+                    pass
+                    #print "Warning: 1 or more vectors not present for "+compound.text
 
             myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
         return myvectors

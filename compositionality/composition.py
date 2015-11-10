@@ -119,6 +119,7 @@ class Composition:
     display=True
     allphrases=True  #include allphrases regardless of frequency
     offsetting=False #offset the dependency vector before composition (False for baseline)
+    headp=0.5
 
     ppmithreshold=0
     filterfreq=1000
@@ -252,6 +253,11 @@ class Composition:
             self.offsetting=(self.config.get('default','offsetting')=='True')
         except:
             self.offsetting=Composition.offsetting
+        try:
+            self.headp=float(self.config.get('default','headp'))
+        except:
+            self.headp=Composition.headp
+
     #----HELPER FUNCTIONS
 
     #-----
@@ -827,12 +833,15 @@ class Composition:
               #      feattot=math.pow(feattot,0.75)
               #      typetot=math.pow(typetot,0.75)  # NO - not the same - need totals computed from smoothed values - need to smooth before computing type totals
 
-                if self.gof_ppmi:
 
-                    pmi=math.log10((freq*grandtot)/(feattot*entrytotal))
-                else:
-                    pmi=math.log10((freq*typetot)/(feattot*total))
+                try:
+                    if self.gof_ppmi:
 
+                        pmi=math.log10((freq*grandtot)/(feattot*entrytotal))
+                    else:
+                        pmi=math.log10((freq*typetot)/(feattot*total))
+                except:
+                    pmi=0
                 shifted_pmi=pmi-self.ppmithreshold
                 if shifted_pmi>0:
                     if self.pp_normal:
@@ -1048,7 +1057,7 @@ class Composition:
     def ANcompose(self,adj,noun):
         self.CompoundCompose(adj,noun,"mod")
 
-    def CompoundCompose(self,dep,head,rel):
+    def CompoundCompose(self,dep,head,rel,hp=0.5):
         hdpos=Composition.headPoS.get(rel,"N")
         dppos=Composition.depPoS.get(rel,"J")
 
@@ -1062,10 +1071,10 @@ class Composition:
         deptot=self.totsbypos[dppos][dep]
 
         entry=dep.split("/")[0]+"|"+rel+"|"+head
-        print "Composing vectors"
-        self.ANvecs[entry]=self.addCompound(depvector,headvector,rel)
+        print "Composing vectors for "+entry
+        self.ANvecs[entry]=self.addCompound(depvector,headvector,rel,hp=hp)
         print "Composing path totals"
-        self.ANpathtots[entry]=self.addCompound(deppathtots,headpathtots,rel)
+        self.ANpathtots[entry]=self.addCompound(deppathtots,headpathtots,rel,hp=hp)
 
         # print self.ANpathtots[entry]
         # print "nn: "+str(self.ANpathtots[entry].get('nn',"not present"))
@@ -1077,11 +1086,11 @@ class Composition:
     #do this by offsetting the adjective vector so that it is aligned with the noun vector
     #then add noun vector to adjective vector
     #----
-    def addCompound(self,depvector,headvector,rel,nntest=False):
+    def addCompound(self,depvector,headvector,rel,nntest=False,hp=0.5):
         if self.offsetting:
             offsetvector = self.offsetVector(depvector,rel)
         else:
-            offsetvector=depvector
+            offsetvector=dict(depvector)
         if nntest:
             print offsetvector
             print "Offset vector nn: "+str(offsetvector.get('nn',"not present"))
@@ -1095,16 +1104,17 @@ class Composition:
         for feature in headvector.keys():
             count+=1
             if feature in offsetvector:
-                COMPOUNDvector[feature]=float(headvector[feature])+float(offsetvector[feature])
+                COMPOUNDvector[feature]=hp*float(headvector[feature])+(1-hp)*float(offsetvector[feature])
                 intersect.append(feature)
                 offsetvector.__delitem__(feature)
             else:
-                COMPOUNDvector[feature]=headvector[feature]
+                COMPOUNDvector[feature]=hp*headvector[feature]
             if count%10000==0:print"Processed "+str(count)
 
-        print "Intersecting features: "+str(len(intersect))
+        print "Intersecting features: "+str(len(intersect)),intersect
         #print "Processing remaining adj features "+str(len(adjvector.keys()))+" : reduced to : "+str(len(offsetvector.keys()))
-        COMPOUNDvector.update(offsetvector)
+        for feature in offsetvector.keys():
+            COMPOUNDvector[feature]=(1-hp)*offsetvector[feature]
         #print "Complete"
         return COMPOUNDvector
 

@@ -39,6 +39,8 @@ class Comparator():
             self.weightingstring+="_"+str(self.composer.ppmithreshold)
         else: self.weightstring=""
 
+
+        self.freqfile=self.filenames[Comparator.key1]+self.reducestring[Comparator.key1]+".rtot"
         for type in self.filenames.keys():
             self.filenames[type]=self.filenames[type]+self.reducestring.get(type,"")+self.normstring+self.weightingstring
 
@@ -58,6 +60,15 @@ class Comparator():
         return len(token.split('|'))==3 and token in self.compounder.generated_compounds
 
 
+    def loadFreqs(self):
+        print("Loading "+self.freqfile+" for frequency analysis")
+        with open(self.freqfile) as instream:
+            for line in instream:
+                line=line.rstrip()
+                fields=line.split('\t')
+                if len(fields[0].split('|'))==3:
+                    self.compounder.addFreq(fields[0],float(fields[1]))
+
     def correlate(self,instream):
 
         for line in instream:
@@ -75,6 +86,8 @@ class Comparator():
             self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
             with open("testout","w") as outstream:
                 self.mySimEngine.pointwise(outstream)
+
+            self.loadFreqs()
 
             with open("testout",'r') as instream:
                 self.correlate(instream)
