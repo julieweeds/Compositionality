@@ -47,6 +47,7 @@ class Compound:
         self.ctype=ctype
         self.autosims={}
         self.frequency=-1
+        self.intSim=-1
 
     def addJudgement(self,NC):
         self.judgements.append(NC)
@@ -62,6 +63,12 @@ class Compound:
 
     def addAutoSim(self,key,sim):
         self.autosims[key]=float(sim)
+
+    def addIntSim(self,sim):
+        self.intSim=sim
+
+    def getIntSim(self):
+        return self.intSim
 
     def addRel(self,rellist):
         found =False
@@ -280,6 +287,14 @@ class Compounder:
         if phrase in self.compounds.keys():
             self.compounds[phrase].addAutoSim(type,sim)
 
+
+    def addIntSim(self,left,right,sim):
+        phrase=left+" "+right
+        comp=self.compounds.get(phrase,None)
+        if comp!=None:
+            comp.addIntSim(sim)
+
+
     def addFreq(self,compound,freq):
         phrase,type = matchmake(compound.split('/')[0])
         if phrase in self.compounds.keys():
@@ -289,12 +304,16 @@ class Compounder:
         listX=[]
         listY=[]
         listZ=[]
+        listA=[]
         for compound in self.compounds.values():
             compound.display()
             if compound.getSimScore()>-1:
                 listX.append(compound.getScore())
                 listY.append(compound.getSimScore())
                 listZ.append(compound.getFreq())
+                listA.append(compound.getIntSim())
+
+
 
         #print listX
         #print listY
@@ -302,6 +321,7 @@ class Compounder:
         print "Mean Human Judgement score: ",np.mean(listX)
         print "Mean AutoSim score: ",np.mean(listY)
         print "Mean Frequency: ",np.mean(listZ)
+        print "Mean Constituent Similarity: ",np.mean(listA)
         print "Spearman's Correlation Coefficient and p'value for Human Judgements vs Automatic Similarity over %s values: "%(str(len(listX))),stats.spearmanr(np.array(listX),np.array(listY))
         if graphing_loaded:
             graphing.makescatter(listX,listY)
@@ -311,6 +331,9 @@ class Compounder:
         print "Spearman's Correlation Coefficient and p'value for Automatic Similarity vs Frequency: ", stats.spearmanr(np.array(listY),np.array(listZ))
         #if graphing_loaded:
         #    graphing.makescatter(listY,listZ)
+        print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Constituent Similarity: ", stats.spearmanr(np.array(listX),np.array(listA))
+        if graphing_loaded:
+            graphing.makescatter(listX,listA)
 
     def run(self):
 
