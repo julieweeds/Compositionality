@@ -299,15 +299,18 @@ class Compounder:
         #print listX
         #print listY
 
+        print "Mean Human Judgement score: ",np.mean(listX)
+        print "Mean AutoSim score: ",np.mean(listY)
+        print "Mean Frequency: ",np.mean(listZ)
         print "Spearman's Correlation Coefficient and p'value for Human Judgements vs Automatic Similarity over %s values: "%(str(len(listX))),stats.spearmanr(np.array(listX),np.array(listY))
         if graphing_loaded:
             graphing.makescatter(listX,listY)
         print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Frequency: ",stats.spearmanr(np.array(listX),np.array(listZ))
-        if graphing_loaded:
-            graphing.makescatter(listX,listZ)
+        #if graphing_loaded:
+        #    graphing.makescatter(listX,listZ)
         print "Spearman's Correlation Coefficient and p'value for Automatic Similarity vs Frequency: ", stats.spearmanr(np.array(listY),np.array(listZ))
-        if graphing_loaded:
-            graphing.makescatter(listY,listZ)
+        #if graphing_loaded:
+        #    graphing.makescatter(listY,listZ)
 
     def run(self):
 

@@ -56,15 +56,27 @@ def getpathvalue(feature):
 #get the order of a given feature
 #----
 def getorder(feature,delim="\xc2\xbb"):
+
     path=getpathtype(feature)
 
     if path=="":
         order=0
     else:
+
         fields=path.split(delim)
         order=len(fields)
 
     return order
+
+def convert(feature,delims=[]):
+    if len(delims)<2:
+        return feature
+    else:
+        for delim in delims[1:]:
+            #print "Attempting to convert ",feature,delim
+            feature = feature.replace(delim,delims[0])
+            #print feature
+        return feature
 
 #---
 #split a higher order feature / find path prefix
@@ -74,11 +86,14 @@ def getorder(feature,delim="\xc2\xbb"):
 #3rd order e.g., nsubj>>_dobj>>amod:red => return ("nsubj","dobj>>amod:red")
 #----
 def splitfeature(feature,delim="\xc2\xbb"):
+
+
     path=getpathtype(feature)
 
     if path=="":
         return "",""
     else:
+        path=getpathtype(feature)
         fields=path.split(delim)
 
         if len(fields)>1:
@@ -180,9 +195,12 @@ class Composition:
             self.saliency=Composition.saliency
             self.saliencyperpath=Composition.saliencyperpath
             self.display=Composition.display
+            self.parentdir=""
+            self.filenames=[]
+            self.pathdelims=['\xc2\xbb']
 
           #suffixes for pos
-        self.filesbypos={"N":self.inpath+".nouns","V":self.inpath+".verbs","J":self.inpath+".adjs","R":self.inpath+".advs","F":self.inpath+".others","ANS":self.inpath+".ans"}
+        self.filesbypos={"N":".nouns","V":".verbs","J":".adjs","R":".advs","F":".others","ANS":".ans"}
 
         #these are dictionaries which will hold vectors and totals
         self.vecsbypos={}
@@ -210,8 +228,23 @@ class Composition:
         self.config.read(filename)
 
         self.options=ast.literal_eval(self.config.get('default','options'))
+        try:
+            self.parentdir=self.config.get('default','parentdir')
+        except:
+            self.parentdir=""
+        try:
+            filenames=ast.literal_eval(self.config.get('default','filenames'))
+            #print filenames
+            self.inpaths=[self.parentdir+p for p in filenames]
+            self.inpath=self.parentdir+"combo"
+            for p in filenames:
+                self.inpath+="_"+p
 
-        self.inpath=self.config.get('default','filename')
+
+        except:
+            self.inpaths=[self.parentdir+self.config.get('default','filename')]
+            self.inpath=self.inpaths[0]
+        print "Paths to process: ",self.inpaths
         self.pos=self.config.get('default','pos')
         mini = self.config.get('default','minorder')
         maxi = self.config.get('default','maxorder')
@@ -240,10 +273,15 @@ class Composition:
         except:
             self.display=Composition.display
 
+
         try:
-            self.pathdelim=ast.literal_eval(self.config.get('default','path_delim'))
+            self.pathdelims=ast.literal_eval(self.config.get('default','path_delims'))
         except:
-            self.pathdelim="\xc2\xbb"
+            self.pathdelims=[]
+            try:
+                self.pathdelims=[self.config.get('default','path_delim')]
+            except:
+                self.pathdelims=['\xc2\xbb']
 
         try:
             self.allphrases=(self.config.get('default','allphrases')=='True')
@@ -257,6 +295,8 @@ class Composition:
             self.headp=float(self.config.get('default','headp'))
         except:
             self.headp=Composition.headp
+
+
 
     #----HELPER FUNCTIONS
 
@@ -336,8 +376,10 @@ class Composition:
     #---
     #generate the input file string according to POS
     #---
-    def selectpos(self):
-        return self.filesbypos.get(self.pos,self.filesbypos["N"])
+    def selectpos(self,path=""):
+        if path =="":
+            path=self.inpath
+        return path+self.filesbypos.get(self.pos,self.filesbypos["N"])
 
 
     #----
@@ -360,7 +402,7 @@ class Composition:
     #get the order of a given feature
     #----
     def getorder(self,feature):
-        return getorder(feature,delim=self.pathdelim)
+        return getorder(feature,delim=self.pathdelims[0])
 
     #---
     #split a higher order feature / find path prefix
@@ -370,7 +412,7 @@ class Composition:
     #3rd order e.g., nsubj>>_dobj>>amod:red => return ("nsubj","dobj>>amod:red")
     #----
     def splitfeature(self,feature):
-        return splitfeature(feature,delim=self.pathdelim)
+        return splitfeature(feature,delim=self.pathdelims[0])
 
     #---
     #turn alist into a string concatenated using the achar
@@ -457,7 +499,7 @@ class Composition:
                     nofeats=0
                     while len(features)>0:
                         freq=features.pop()
-                        feat=features.pop()
+                        feat=convert(features.pop(),delims=self.pathdelims)
                         forder=self.getorder(feat)
 
                         if forder>=self.minorder and forder<=self.maxorder:
@@ -503,7 +545,7 @@ class Composition:
                     index+=1
 
                     freq=features.pop()
-                    feat=features.pop()
+                    feat=convert(features.pop(),delims=self.pathdelims)
 
                     #print str(index)+"\t"+feat+"\t"+str(freq)
                     try:
@@ -530,19 +572,21 @@ class Composition:
     #subsequenct functions in pipeline can load pre-calcualated row totals using this function
     #---
     def load_rowtotals(self):
-        infile= self.selectpos()+self.reducedstring
-        if self.normalised and not self.option=="normalise":
-            infile+=".filtered.norm"
-        rowtotals=infile+".rtot"
-        totals={}
-        print "Loading entry totals from: "+rowtotals
-        with open(rowtotals) as instream:
-            for line in instream:
-                line=line.rstrip()
-                fields=line.split("\t")
-                if self.normalised or float(fields[1])>self.filterfreq or self.phraseinclude(fields[0]):
-                    totals[fields[0]]=float(fields[1])
-        print "Loaded "+str(len(totals.keys()))
+        for path in self.inpaths:
+            infile= self.selectpos(path=path)+self.reducedstring
+            if self.normalised and not self.option=="normalise":
+                infile+=".filtered.norm"
+            rowtotals=infile+".rtot"
+            totals={}
+            print "Loading entry totals from: "+rowtotals
+            with open(rowtotals) as instream:
+                for line in instream:
+                    line=line.rstrip()
+                    fields=line.split("\t")
+                    if self.normalised or float(fields[1])>self.filterfreq or self.phraseinclude(fields[0]):
+                        sofar=totals.get(fields[0],0)
+                        totals[fields[0]]=sofar+float(fields[1])
+            print "Loaded "+str(len(totals.keys()))
 
         return totals
 
@@ -552,22 +596,25 @@ class Composition:
     def load_coltotals(self,cds=False):
         #set cds =True to perform context distribution smoothing
 
-        infile=self.selectpos()+self.reducedstring
-        if self.normalised and not self.option=="normalise":
-            infile+=".filtered.norm"
-        coltotals=infile+".ctot"
-        totals={}
-        print "Loading feature totals from: "+coltotals
-        with open(coltotals) as instream:
-            for line in instream:
-                line=line.rstrip()
-                fields=line.split("\t")
-                if self.normalised or float(fields[1])>self.filterfreq:
-                    if cds:
-                        totals[fields[0]]=pow(float(fields[1]),0.75)
-                    else:
-                        totals[fields[0]]=float(fields[1])
-        print "Loaded "+str(len(totals.keys()))
+        for path in self.inpaths:
+            infile=self.selectpos(path=path)+self.reducedstring
+            if self.normalised and not self.option=="normalise":
+                infile+=".filtered.norm"
+            coltotals=infile+".ctot"
+            totals={}
+            print "Loading feature totals from: "+coltotals
+            with open(coltotals) as instream:
+                for line in instream:
+                    line=line.rstrip()
+                    fields=line.split("\t")
+                    if self.normalised or float(fields[1])>self.filterfreq:
+                        feat=convert(fields[0],delims=self.pathdelims)
+                        sofar=totals.get(feat,0)
+                        if cds:
+                            totals[feat]=pow(float(fields[1]),0.75)+sofar
+                        else:
+                            totals[feat]=float(fields[1])+sofar
+            print "Loaded "+str(len(totals.keys()))
         return totals
 
 
@@ -610,7 +657,7 @@ class Composition:
                     while len(features)>0:
                         freq=features.pop()
                         #feat=features.pop().lower()
-                        feat=features.pop()
+                        feat=convert(features.pop(),delims=self.pathdelims)
                         feattot=float(coltotals.get(feat,0))
                         #print feat+"\t"+str(feattot-self.filterfreq)
 
@@ -653,7 +700,7 @@ class Composition:
                 outline=entry
                 while len(features)>0:
                     weight=float(features.pop())
-                    feat=features.pop()
+                    feat=convert(features.pop(),delims=self.pathdelims)
                     weight = weight/entrytot
                     outline+="\t"+feat+"\t"+str(weight)
                 outline+="\n"
@@ -667,47 +714,53 @@ class Composition:
     #---
     #load in pre-filtered and (optionally) normalised vectors
     #----
-    def load_vectors(self,infile=""):
-        if infile=="":
-            infile=self.selectpos()+self.reducedstring+".filtered"
+    def load_vectors(self,inpath=""):
+        if inpath=="":
+            infiles=[self.selectpos(p)+self.reducedstring+".filtered" for p in self.inpaths]
             if self.normalised and not self.option=="normalise":
-                infile+=".norm"
+                infiles=[p+".norm" for p in infiles]
+        else:
+            infiles=[inpath]
+
+
         vecs={}
-        print "Loading vectors from: "+infile
-        print "Words of interest: ",self.words
-        with open(infile) as instream:
+        for infile in infiles:
+            print "Loading vectors from: "+infile
+            print "Words of interest: ",self.words
+            with open(infile) as instream:
 
-            for lines,line in enumerate(instream):
-                if lines%1000==0: print "Reading line "+str(lines)
+                for lines,line in enumerate(instream):
+                    if lines%1000==0: print "Reading line "+str(lines)
 
-                line=line.rstrip()
-                fields=line.split("\t")
-                entry=fields[0]
-                #print entry
-                if self.include(entry):
-                    vector={}
-                    features=fields[1:]
+                    line=line.rstrip()
+                    fields=line.split("\t")
+                    entry=fields[0]
+                    #print entry
+                    if self.include(entry):
+                        vector={}
+                        features=fields[1:]
 
-                    index=0
-                    while len(features)>0:
-                        index+=1
+                        index=0
+                        while len(features)>0:
+                            index+=1
 
-                        freq=features.pop()
-                        feat=features.pop()
+                            freq=features.pop()
+                            feat=convert(features.pop(),delims=self.pathdelims)
+                            #print feat
 
-                        #print str(index)+"\t"+feat+"\t"+str(freq)
-                        try:
-                            freq=float(freq)
-                            vector[feat]=freq
-                        except ValueError:
-                            print "Error: "+str(index)+"\t"+feat+"\t"+str(freq)+"\n"
-                            features=features+list(feat)
-                    if entry in vecs.keys():
-                        vecs[entry]=self.add(vecs[entry],vector)
-                    else:
-                        vecs[entry]=vector
+                            #print str(index)+"\t"+feat+"\t"+str(freq)
+                            try:
+                                freq=float(freq)
+                                vector[feat]=freq
+                            except ValueError:
+                                print "Error: "+str(index)+"\t"+feat+"\t"+str(freq)+"\n"
+                                features=features+list(feat)
+                        if entry in vecs.keys():
+                            vecs[entry]=self.add(vecs[entry],vector)
+                        else:
+                            vecs[entry]=vector
 
-        print "Loaded "+str(len(vecs.keys()))+" vectors"
+            print "Loaded "+str(len(vecs.keys()))+" vectors"
         return vecs
 
     #----
@@ -727,6 +780,7 @@ class Composition:
                     ignored=0
                     nofeats=0
                     for feat in vector.keys():
+                        #print feat
                         forder=self.getorder(feat)
 
                         if forder>=self.minorder and forder<=self.maxorder:
@@ -945,9 +999,9 @@ class Composition:
                 feature=tuple[0]
                 pathtype=self.getpathtype(feature)
                 done=donetypes.get(pathtype,0)
-                if self.typeinclude(pathtype) and ((self.saliencyperpath and done<Composition.saliency)or(not self.saliencyperpath and all<Composition.saliency)):
+                if self.typeinclude(pathtype) and ((self.saliencyperpath and done<self.saliency)or(not self.saliencyperpath and all<self.saliency)):
                     newvector[feature]=tuple[1]
-                    donetypes[pathtype]+=1
+                    donetypes[pathtype]=done+1
                     all+=1
             return newvector
         else:
@@ -1146,7 +1200,7 @@ class Composition:
             elif prefix=="":
                 newfeature=headPREFIX+feature
             else:
-                newfeature=headPREFIX+self.pathdelim+feature
+                newfeature=headPREFIX+self.pathdelims[0]+feature
             if not newfeature == "":
                 offsetvector[newfeature]=depvector[feature]
         #print "Features in original adj vector: "+str(len(adjvector.keys()))

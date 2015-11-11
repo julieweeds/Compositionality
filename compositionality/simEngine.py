@@ -1,7 +1,9 @@
+from operator import itemgetter
+
 __author__ = 'juliewe'
 
 import numpy as np, scipy.sparse as sparse,sys
-from composition import getorder
+from composition import getorder,getpathtype
 
 def isAny(token):
     return True
@@ -49,6 +51,24 @@ class WordVector:
 
         return sim
 
+    def reducesaliency(self,saliency,saliencyperpath=False):
+        if saliency==0:
+            return
+        else:
+
+            feats=sorted(self.features.items(),key=itemgetter(1),reverse=True)
+            self.features={}
+            donetypes={}
+            all=0
+            for tuple in feats:
+                feature=tuple[0]
+                pathtype=getpathtype(feature)
+                done=donetypes.get(pathtype,0)
+                if (saliencyperpath and done<saliency)or(not saliencyperpath and all<saliency):
+                    self.features[feature]=tuple[1]
+                    donetypes[pathtype]=done+1
+                    all+=1
+
 
 class SimEngine():
     #holds dictionary of vectors - manages conversion to sparse arrays and similarity calculations
@@ -59,15 +79,18 @@ class SimEngine():
 
     minorder=1 #minimum order to be used in similarity calculations
     maxorder=1 #maximum order to be used in simiarity calculations
+    #paths_to_include=['_dobj']  #empty to include all
+    paths_to_include=[]
 
-
-    def __init__(self,filename_dict,include_function=isAny,pathdelim="?"):
+    def __init__(self,filename_dict,include_function=isAny,pathdelim="?",saliency=0,saliencyperpath=False):
         self.filenames=filename_dict
         self.vectors={} #dictionaries of vectors
         self.allfeatures={} #dictionary of all features observed for matrix generation
         self.fk_idx={} #feature --> dimension
         self.include_fn=include_function
         self.pathdelim=pathdelim
+        self.saliency=saliency
+        self.saliencyperpath=saliencyperpath
         for type in self.filenames.keys():
             self.vectors[type]={}
         for type in self.filenames.keys():
@@ -103,6 +126,12 @@ class SimEngine():
     def include(self,token):
         return self.include_fn(token)
 
+    def includepath(self,feat):
+        if len(SimEngine.paths_to_include)>0:
+            return getpathtype(feat) in SimEngine.paths_to_include
+        else:
+            return True
+
     def createvector(self,token,featurelist,type):
         self.vectors[type][token]=WordVector(token)
         featurelist.reverse() #reverse list so can pop features and scores off
@@ -113,8 +142,11 @@ class SimEngine():
             forder=getorder(f,delim=self.pathdelim)
 
             if forder>=SimEngine.minorder and forder<=SimEngine.maxorder: #filter features by path length
-                self.vectors[type][token].addfeature(f,sc)
-                self.allfeatures[f]=1
+                if self.includepath(f):  #filter by path type
+                    self.vectors[type][token].addfeature(f,sc)
+                    self.allfeatures[f]=1
+
+        self.vectors[type][token].reducesaliency(self.saliency,saliencyperpath=self.saliencyperpath)
 
     def makematrix(self):
 
