@@ -237,9 +237,6 @@ class Composition:
             #print filenames
             self.inpaths=[self.parentdir+p for p in filenames]
             self.inpath=self.parentdir+"combo"
-            for p in filenames:
-                self.inpath+="_"+p
-
 
         except:
             self.inpaths=[self.parentdir+self.config.get('default','filename')]
