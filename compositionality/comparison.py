@@ -13,12 +13,18 @@ class Comparator():
         self.config.read(configfile)
 
         self.exp_type=self.config.get('default','exp_type') # set this to anything other than 'compounds' if not wanting to load the phrasal compounds and use other config options
+        try:
+            self.parentdir=self.config.get('default','parentdir')
+        except:
+            self.parentdir=""
         self.filenames={}
-        self.filenames[Comparator.key1]=self.config.get('default','observedfile')
+        self.filenames[Comparator.key1]=self.parentdir+self.config.get('default','observedfile')
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
             self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
             print self.compounder.generated_compounds
+            print self.compounder.firstindex.keys()
+            print self.compounder.secondindex.keys()
 
         self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
@@ -47,9 +53,9 @@ class Comparator():
     def generate_SimEngine(self):
 
         if self.exp_type==('compounds'):
-            simEngine=SimEngine(self.filenames,self.isListedCompound,pathdelim=self.composer.pathdelim,saliency=self.composer.saliency,saliencyperpath=self.composer.saliencyperpath)
+            simEngine=SimEngine(self.filenames,self.isListedCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.saliency,saliencyperpath=self.composer.saliencyperpath)
         elif self.exp_type==('simple_compounds'):
-            simEngine=SimEngine(self.filenames,self.isCompound,pathdelim=self.composer.pathdelim,saliency=self.composer.salience,saliencyperpath=self.composer.saliencyperpath)
+            simEngine=SimEngine(self.filenames,self.isCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.salience,saliencyperpath=self.composer.saliencyperpath)
 
         return simEngine
 
@@ -60,6 +66,10 @@ class Comparator():
         return len(token.split('|'))==3 and token in self.compounder.generated_compounds
 
 
+    def isConstituent(self,token):
+        lex =token.split('/')[0]
+        return lex in self.compounder.firstindex.keys() or lex in self.compounder.secondindex.keys()
+
     def loadFreqs(self):
         print("Loading "+self.freqfile+" for frequency analysis")
         with open(self.freqfile) as instream:
@@ -68,6 +78,21 @@ class Comparator():
                 fields=line.split('\t')
                 if len(fields[0].split('|'))==3:
                     self.compounder.addFreq(fields[0],float(fields[1]))
+
+
+
+
+    def calcInternalSims(self):
+        filenames={Comparator.key1:self.filenames[Comparator.key1]}
+        print "Starting calculation of constituent similarities"
+        aSimEngine=SimEngine(filenames,include_function=self.isConstituent)
+        with open("intsims","w") as outstream:
+            aSimEngine.allpairs(outstream=outstream)
+        with open("intsims","r") as instream:
+            for line in instream:
+                line=line.rstrip()
+                fields=line.split('\t')
+                self.compounder.addIntSim(fields[1],fields[2],float(fields[3]))
 
     def correlate(self,instream):
 
@@ -88,7 +113,7 @@ class Comparator():
                 self.mySimEngine.pointwise(outstream)
 
             self.loadFreqs()
-
+            self.calcInternalSims()
             with open("testout",'r') as instream:
                 self.correlate(instream)
         else:

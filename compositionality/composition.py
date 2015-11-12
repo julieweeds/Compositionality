@@ -135,6 +135,7 @@ class Composition:
     allphrases=True  #include allphrases regardless of frequency
     offsetting=False #offset the dependency vector before composition (False for baseline)
     headp=0.5
+    reversed=False #reverse the order of the constituents before composition (True for order baseline)
 
     ppmithreshold=0
     filterfreq=1000
@@ -293,6 +294,10 @@ class Composition:
         except:
             self.headp=Composition.headp
 
+        try:
+            self.reversed=(self.config.get('default','reversed')=='True')
+        except:
+            self.reversed=Composition.reversed
 
 
     #----HELPER FUNCTIONS
@@ -1138,6 +1143,11 @@ class Composition:
     #then add noun vector to adjective vector
     #----
     def addCompound(self,depvector,headvector,rel,nntest=False,hp=0.5):
+        if self.reversed:
+            temp =depvector
+            depvector=headvector
+            headvector=temp
+
         if self.offsetting:
             offsetvector = self.offsetVector(depvector,rel)
         else:

@@ -47,7 +47,7 @@ class Compound:
         self.ctype=ctype
         self.autosims={}
         self.frequency=-1
-        self.intSim=-1
+        self.intSim=0
 
     def addJudgement(self,NC):
         self.judgements.append(NC)
@@ -169,7 +169,7 @@ class Compound:
                 else:
                     print "Too many tokens"
                 lines.append(line)
-            lines.append("counts: "+str(counts_to_use[index]))
+            #lines.append("counts: "+str(counts_to_use[index]))
 
         return lines
 
@@ -182,8 +182,9 @@ class Compound:
     def display(self):
         for line in self.getConll():
             print line
-        print "Non-Compositionality",self.getScore()
+        print "Compositionality",self.getScore()
         print "Automatic Similarity",self.getAutoSim()
+        print "Constituent Similarity",self.getIntSim()
         print "-----"
 
     def display_compounds(self):
@@ -289,7 +290,7 @@ class Compounder:
 
 
     def addIntSim(self,left,right,sim):
-        phrase=left+" "+right
+        phrase=left.split('/')[0]+" "+right.split('/')[0]
         comp=self.compounds.get(phrase,None)
         if comp!=None:
             comp.addIntSim(sim)
