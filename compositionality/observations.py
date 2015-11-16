@@ -58,6 +58,7 @@ class CompoundFinder(Compounder):
         self.cont_nodep=0
         self.cont=0
         self.cont_revdep=0
+        self.skippedfiles=[]
 
     def process_file(self,file=""):
         if file=="":file=self.corpusfile
@@ -70,11 +71,17 @@ class CompoundFinder(Compounder):
                 self.cleanstream=gzip.open(file[0:-3]+".clean"+".gz","w")
 
         else:
-            fp = open(file)
+            try:
+                fp = open(file)
+            except:
+                try:
+                    fp = gzip.open(file+".gz")
+                except:
+                    self.skippedfiles.append(file)
             if self.convert:
-                self.outstream = open(file+".compounds","w")
+                self.outstream = open(file+".compounds.gz","w")
             if self.clean:
-                self.cleanstream = open(file+".clean","w")
+                self.cleanstream = open(file+".clean.gz","w")
 
 
         sentencebuffer={}
@@ -124,7 +131,19 @@ class CompoundFinder(Compounder):
                 else:
                     self.process_file(file=datafile)
 
+
+
         else: self.process_file()
+
+        if len(self.skippedfiles)>0:
+            todo=self.skippedfiles
+            self.skippedfiles=[]
+            print "Retrying skipped files: ",todo
+            for datafile in self.todo:
+                print "Processing ", datafile
+                self.process_file(file=datafile)
+            if len(self.skippedfiles)>0:
+                print "Really skipped "+str(len(self.skippedfiles))+" files: ",self.skippedfiles
 
         #analyse counts
         if self.contiguous:
