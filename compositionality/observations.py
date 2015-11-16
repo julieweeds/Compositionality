@@ -42,6 +42,13 @@ class CompoundFinder(Compounder):
         self.minlength=int(self.config.get(self.ptype,'minlength'))
         self.extra=ast.literal_eval(self.config.get(self.ptype,'extra'))
         self.erased=ast.literal_eval(self.config.get(self.ptype,'erased'))
+        try:
+            self.uselemma=(self.config.get(self.ptype,'uselemma')=='True')
+        except:
+            self.uselemma=False
+
+        if self.uselemma and self.lemma>-1:
+            self.lex=self.lemma  #replace lexeme with lemma
 
         for comp in self.compounds.keys():
             self.counts[comp]=0
