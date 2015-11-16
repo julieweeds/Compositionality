@@ -133,9 +133,10 @@ class Composition:
     featmax=3  #how many features of each path type to display when showing most salient features
     display=True
     allphrases=True  #include allphrases regardless of frequency
-    offsetting=False #offset the dependency vector before composition (False for baseline)
+    offsetting=1.0 #offset the dependency vector before composition (False/0 for baseline)
     headp=0.5
     reversed=False #reverse the order of the constituents before composition (True for order baseline)
+    compop="add"
 
     ppmithreshold=0
     filterfreq=1000
@@ -286,7 +287,7 @@ class Composition:
         except:
             self.allphraser=Composition.allphrases
         try:
-            self.offsetting=(self.config.get('default','offsetting')=='True')
+            self.offsetting=float(self.config.get('default','offsetting'))
         except:
             self.offsetting=Composition.offsetting
         try:
@@ -298,6 +299,11 @@ class Composition:
             self.reversed=(self.config.get('default','reversed')=='True')
         except:
             self.reversed=Composition.reversed
+
+        try:
+            self.compop=self.config.get('default','compop')
+        except:
+            self.compop=Composition.compop
 
 
     #----HELPER FUNCTIONS
@@ -1113,7 +1119,7 @@ class Composition:
     def ANcompose(self,adj,noun):
         self.CompoundCompose(adj,noun,"mod")
 
-    def CompoundCompose(self,dep,head,rel,hp=0.5):
+    def CompoundCompose(self,dep,head,rel,hp=0.5,compop="add"):
         hdpos=Composition.headPoS.get(rel,"N")
         dppos=Composition.depPoS.get(rel,"J")
 
@@ -1128,9 +1134,9 @@ class Composition:
 
         entry=dep.split("/")[0]+"|"+rel+"|"+head
         print "Composing vectors for "+entry
-        self.ANvecs[entry]=self.addCompound(depvector,headvector,rel,hp=hp)
+        self.ANvecs[entry]=self.doCompound(depvector,headvector,rel,hp=hp,op=compop)
         print "Composing path totals"
-        self.ANpathtots[entry]=self.addCompound(deppathtots,headpathtots,rel,hp=hp)
+        self.ANpathtots[entry]=self.doCompound(deppathtots,headpathtots,rel,hp=hp,op=compop)
 
         # print self.ANpathtots[entry]
         # print "nn: "+str(self.ANpathtots[entry].get('nn',"not present"))
@@ -1138,23 +1144,43 @@ class Composition:
 
 
     #----
-    #add an adjective vector to a noun vector (may be feature vectors or path vectors)
-    #do this by offsetting the adjective vector so that it is aligned with the noun vector
-    #then add noun vector to adjective vector
-    #----
-    def addCompound(self,depvector,headvector,rel,nntest=False,hp=0.5):
+    #handle composition operations such as offsetting (required or not) and merge operation (add, min etc)
+    #-----
+    def doCompound(self,depvector,headvector,rel,nntest=False,hp=0.5,op="add"):
         if self.reversed:
             temp =depvector
             depvector=headvector
             headvector=temp
 
-        if self.offsetting:
-            offsetvector = self.offsetVector(depvector,rel)
-        else:
+        if self.offsetting<=0:
             offsetvector=dict(depvector)
+        elif self.offsetting>=1:
+            offsetvector=self.offsetVector(depvector,rel)
+        else:
+            offsetvector=self.add(self.offsetVector(depvector,rel),depvector,weight=self.offsetting)
+
+
         if nntest:
             print offsetvector
             print "Offset vector nn: "+str(offsetvector.get('nn',"not present"))
+            print "Offset vector '': "+str(offsetvector.get('',"not present"))
+            print headvector
+            print "Head vector '': "+str(headvector.get('',"not present"))
+
+        if op=="add":
+            return self.addCompound(offsetvector,headvector,hp)
+        elif op=="min":
+            return self.minCompound(offsetvector,headvector)
+        else:
+            print "Error unknown composition operation: "+op
+            exit(-1)
+
+    #----
+    #add an adjective vector to a noun vector (may be feature vectors or path vectors)
+    #do this by offsetting the adjective vector so that it is aligned with the noun vector
+    #then add noun vector to adjective vector
+    #----
+    def addCompound(self,offsetvector,headvector,hp=0.5):
 
         COMPOUNDvector={}
         #print "Processing noun features "+str(len(nounvector.keys()))
@@ -1179,8 +1205,21 @@ class Composition:
         #print "Complete"
         return COMPOUNDvector
 
+    def minCompound(self,offsetvector,headvector):
+        COMPOUNDvector={}
+        intersect=[]
+        for count,feature in enumerate(headvector.keys()):
+            if feature in offsetvector:
+                COMPOUNDvector[feature]=min(float(headvector[feature]),float(offsetvector[feature]))
+                intersect.append(feature)
+
+        print "Intersecting features: "+str(len(intersect)),intersect
+        return COMPOUNDvector
+
     def addAN(self,adjvector,nounvector):
-        return self.addCompound(adjvector,nounvector,"mod")
+        return self.doCompound(adjvector,nounvector,"mod")
+
+
 
     #----
     #offset an adjective vector so that it aligns with the noun vector it is modifying
@@ -1196,19 +1235,22 @@ class Composition:
         incomp=0
         for feature in depvector.keys():
             (prefix,suffix)= self.splitfeature(feature)
+            #print depPREFIX,prefix,suffix
             if prefix==depPREFIX:
                 newfeature=suffix+self.getpathvalue(feature)
+
             elif prefix.startswith("_"):
                 #incompatible feature for composition
                 #print "Incompatible feature for composition: "+feature
                 incomp+=1
-                newfeature=""
+                newfeature="ignore"
             #elif feature.startswith(":"):
             elif prefix=="":
                 newfeature=headPREFIX+feature
             else:
                 newfeature=headPREFIX+self.pathdelims[0]+feature
-            if not newfeature == "":
+            #print newfeature
+            if not newfeature == "ignore":
                 offsetvector[newfeature]=depvector[feature]
         #print "Features in original adj vector: "+str(len(adjvector.keys()))
         #print "Incompatible features in adjective vector: "+str(incomp)
@@ -1219,11 +1261,23 @@ class Composition:
     #add two vectors
     #not used I think
     #---
-    def add(self,avector,bvector):
-        rvector=dict(avector)
-        for feat in bvector.keys():
-            rvector[feat]=rvector.get(feat,0)+bvector[feat]
+    def add(self,avector,bvector,weight=0.5):
+        rvector={}
+        for feature in bvector.keys():
+            if feature in avector:
+                rvector[feature]=weight*float(avector[feature])+(1-weight)*float(bvector[feature])
+                avector.__delitem__(feature)
+            else:
+                rvector[feature]=(1-weight)*float(bvector[feature])
+
+        for feature in avector.keys():
+            rvector[feature]=weight*float(avector[feature])
+
         return rvector
+        #rvector=dict(avector)
+        #for feat in bvector.keys():
+        #    rvector[feat]=rvector.get(feat,0)+bvector[feat]
+        #return rvector
 
 
     #----OTHER FUNCTIONS

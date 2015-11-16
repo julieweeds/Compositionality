@@ -1,7 +1,7 @@
 __author__ = 'juliewe'
 #take in the list of noun compounds and generate other formats for composition etc
 
-import sys, ConfigParser, numpy as np, scipy.stats as stats
+import sys, ConfigParser, numpy as np, scipy.stats as stats,random
 try:
     import graphing
     graphing_loaded=True
@@ -48,6 +48,7 @@ class Compound:
         self.autosims={}
         self.frequency=-1
         self.intSim=0
+        self.fold=-1  #if cross-validation taking place, this represents the bin this compound is in
 
     def addJudgement(self,NC):
         self.judgements.append(NC)
@@ -195,6 +196,9 @@ class Compound:
         for value in self.compounds.values():
             outpath.write(value+"\n")
 
+    def assign_fold(self,fold):
+        self.fold=fold
+
 class Compounder:
 
     def __init__(self,filename):
@@ -215,6 +219,7 @@ class Compounder:
 
         except:
             print "Error: problem with configuration"
+        random.seed(43)
 
     def readcompounds(self):
         if self.ctype=="reddy":
@@ -333,8 +338,37 @@ class Compounder:
         #if graphing_loaded:
         #    graphing.makescatter(listY,listZ)
         print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Constituent Similarity: ", stats.spearmanr(np.array(listX),np.array(listA))
-        if graphing_loaded:
-            graphing.makescatter(listX,listA)
+        #if graphing_loaded:
+        #    graphing.makescatter(listX,listA)
+
+    def crossvalidate(self,folds,p=""):
+        for i in range(0,folds):
+
+            TrainX=[]
+            TrainY=[]
+            TestX=[]
+            TestY=[]
+            for compound in self.compounds.values():
+                if compound.fold==i:
+                    TestX.append(compound.getScore())
+                    TestY.append(compound.getSimScore())
+                else:
+                    TrainX.append(compound.getScore())
+                    TrainY.append(compound.getSimScore())
+            trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
+            testingR=stats.spearmanr(np.array(TestX),np.array(TestY))
+            print p,i,trainingR[0],testingR[0]
+
+
+
+
+
+    def setup_folds(self,folds):
+        #assign each compound to a random fold bin
+        keys=self.compounds.keys()
+        random.shuffle(keys)
+        for i,key in enumerate(keys):
+            self.compounds[key].assign_fold(i%folds)
 
     def run(self):
 

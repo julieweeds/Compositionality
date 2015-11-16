@@ -25,6 +25,8 @@ class Comparator():
             print self.compounder.generated_compounds
             print self.compounder.firstindex.keys()
             print self.compounder.secondindex.keys()
+            if self.crossvalidate:
+                self.compounder.setup_folds(self.nfolds)
 
         self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
@@ -49,6 +51,21 @@ class Comparator():
         self.freqfile=self.filenames[Comparator.key1]+self.reducestring[Comparator.key1]+".rtot"
         for type in self.filenames.keys():
             self.filenames[type]=self.filenames[type]+self.reducestring.get(type,"")+self.normstring+self.weightingstring
+
+        try:
+            self.nfolds=int(self.config.get('default','nfolds'))
+            self.trialp=ast.literal_eval(self.config.get('default','trialp'))
+            self.crossvalidate=True
+        except:
+            self.nfolds=0
+            self.trialp=[]
+            self.crossvalidate=False
+
+        if self.crossvalidate:
+            print "Cross-valiation: number of folds = "+str(self.nfolds)
+            print self.trialp
+        else:
+            print "No cross-validation"
 
     def generate_SimEngine(self):
 
@@ -103,6 +120,8 @@ class Comparator():
                 self.compounder.addAutoSim(fields[0],fields[3])
 
         self.compounder.correlate()
+        if self.crossvalidate:
+             self.compounder.crossvalidate(self.nfolds,p=str(self.composer.offsetting))
 
 
     def run(self):
@@ -116,6 +135,8 @@ class Comparator():
             self.calcInternalSims()
             with open("testout",'r') as instream:
                 self.correlate(instream)
+
+
         else:
             self.mySimEngine.allpairs()
 

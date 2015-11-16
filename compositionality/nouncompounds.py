@@ -114,10 +114,10 @@ class NounCompounder(Composition):
     def runANcomposition(self):
         myvectors={}
         for rel in self.myCompounder.relindex.keys():
-            print "Adding feature totals for "+rel
-            self.ANfeattots=self.addCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp)  #C<*,t,f>
-            print "Adding type totals for "+rel
-            self.ANtypetots=self.addCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp)  #C<*,t,*>
+            print "Composing type totals for "+rel
+            self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop)  #C<*,t,*>
+            print "Composing feature totals for "+rel
+            self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop)  #C<*,t,f>
 
             self.ANvecs={}
             self.ANtots={}
@@ -127,7 +127,7 @@ class NounCompounder(Composition):
                 #should check not lower case for pos
                 try:
                     #print "Composing: "+compound.text
-                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp)
+                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop)
 
                 except KeyError:
                     pass
