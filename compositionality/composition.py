@@ -439,11 +439,11 @@ class Composition:
     #----
     def splitpos(self):
 
-        nouns=open(self.filesbypos["N"],"w")
-        verbs=open(self.filesbypos["V"],"w")
-        adjs=open(self.filesbypos["J"],"w")
-        advs=open(self.filesbypos["R"],"w")
-        others=open(self.filesbypos["F"],"w")
+        nouns=open(self.inpath+self.filesbypos["N"],"w")
+        verbs=open(self.inpath+self.filesbypos["V"],"w")
+        adjs=open(self.inpath+self.filesbypos["J"],"w")
+        advs=open(self.inpath+self.filesbypos["R"],"w")
+        others=open(self.inpath+self.filesbypos["F"],"w")
 
 
         infile=self.inpath+".gz"
