@@ -47,8 +47,9 @@ class CompoundFinder(Compounder):
         except:
             self.uselemma=False
 
-        if self.uselemma and self.lemma>-1:
-            self.lex=self.lemma  #replace lexeme with lemma
+        #if self.uselemma and self.lemma>-1:
+        #    self.lex=self.lemma  #replace lexeme with lemma
+        #    self.lemma=-1 #ignore lemma
 
         for comp in self.compounds.keys():
             self.counts[comp]=0
@@ -86,7 +87,7 @@ class CompoundFinder(Compounder):
 
         sentencebuffer={}
 
-        for line in fp:
+        for lines,line in enumerate(fp):
             #need to load in sentence at a time and process each sentence
             #need to be careful in case there are any dependencies on dependent
             line=line.rstrip()
@@ -103,8 +104,8 @@ class CompoundFinder(Compounder):
                     else:
                         self.process_sentence(sentencebuffer)
                     sentencebuffer={}
-            self.lines+=1
-            if self.lines%1000000==0:
+            lines+=1
+            if lines%1000000==0:
                 print "Processed "+str(self.lines)+" lines"
                 print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"
                 print "Found "+str(self.non_zero(list=self.countrel.values()))+" with dependency relationship"
@@ -224,6 +225,7 @@ class CompoundFinder(Compounder):
         if self.clean:
             self.output_sentence(sentence,self.cleanstream)
         mxindex=len(sentence.values())-1+self.firstindex
+        lemmamatch=False
         for i in sentence.keys():
             try:
                 sid =int (i)
@@ -233,8 +235,23 @@ class CompoundFinder(Compounder):
                     candhead=getLex(sentence[str(sid+1)][self.lex]).lower()
 
                     candkey=canddep+" "+candhead
+                    if self.uselemma:
+                        candkey2=getLex(arc[self.lemma]).lower()+" "+getLex(sentence[str(sid+1)][self.lemma]).lower()
+                        candkey3=getLex(arc[self.lex].lower())+" "+getLex(sentence[str(sid+1)][self.lemma]).lower()
+                        if candkey2 in self.compounds.keys():
+                            lemmamatch=True
+                            candkey=candkey2
+
+                        elif candkey3 in self.compounds.keys():
+                            lemmamatch=True
+                            candkey=candkey3
+                        else:
+                            lemmamatch=False
+
+
                     #print candkey
-                    if candkey in self.compounds.keys():
+                    if lemmamatch or (candkey in self.compounds.keys()):
+                        #print "Found",candkey
                         self.counts[candkey]+=1
                         self.cont+=1
                         if self.counts[candkey]==1:
@@ -267,15 +284,24 @@ class CompoundFinder(Compounder):
                                 self.cont_nodep+=1
                                 if self.convert: sentence=self.convert_compounds(sentence,sid)
             except:
-                #print "Warning: error ignored"
+                print "Warning: error ignored"
                 pass
 
         if self.convert: self.output_sentence(sentence, self.outstream)
 
     def convert_compounds(self,sentence,sid):
-        cmpd=sentence[str(sid)][self.lex]+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][self.lex]
-        sentence[str(sid+1)][self.lex]=cmpd
-        if self.lemma>-1:
+        if self.ptype =="conll7" or self.ptype=="nyt":
+            deppos = self.getPosTag(sentence[str(sid)][self.pos])
+        else:
+            deppos = getPos(sentence[str(sid)][self.lex])
+
+        if self.uselemma:
+            token_to_use=self.lemma
+        else:
+            token_to_use=self.lex
+        cmpd=sentence[str(sid)][token_to_use]+"/"+deppos+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][token_to_use]
+        sentence[str(sid+1)][token_to_use]=cmpd
+        if self.lemma and not self.uselemma >-1:
             sentence[str(sid+1)][self.lemma]=sentence[str(sid)][self.lemma]+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][self.lemma]
 
         sentence[str(sid)]=self.erased
@@ -314,11 +340,16 @@ class CompoundFinder(Compounder):
     #ptype=conll7: arc = [form,lemma,POS,NER,head,rel]
 
     #aptInput requires: arc = [form/POS,head,rel]
+        if self.uselemma:
+            token_to_use = self.lemma
+        else:
+            token_to_use = self.lex
+
         index_adj=1-self.firstindex
         if self.ptype=="conll7" or self.ptype=="nyt":
-            return [arc[self.lex].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+            return [arc[token_to_use].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
         else:
-            return [getLex(arc[self.lex],tdelim='|')+"/"+getPos(arc[self.lex]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+            return [getLex(arc[token_to_use],tdelim='|')+"/"+getPos(arc[token_to_use]),int(arc[self.headpos])+index_adj,arc[self.relname]]
 
     def getPosTag(self,tag):
         newtag=tag[0]
