@@ -111,13 +111,18 @@ class NounCompounder(Composition):
         if self.words==[]:self.words=['-']
 
 
-    def runANcomposition(self):
+    def runANcomposition(self,parampair=('','')):
         myvectors={}
+        if parampair[0]=="offsetting":
+            offsetting=float(parampair[1])
+        else:
+            offsetting=self.offsetting
+
         for rel in self.myCompounder.relindex.keys():
             print "Composing type totals for "+rel
-            self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop)  #C<*,t,*>
+            self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
             print "Composing feature totals for "+rel
-            self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop)  #C<*,t,f>
+            self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
 
             self.ANvecs={}
             self.ANtots={}
@@ -127,7 +132,7 @@ class NounCompounder(Composition):
                 #should check not lower case for pos
                 try:
                     #print "Composing: "+compound.text
-                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop)
+                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
 
                 except KeyError:
                     pass
@@ -136,11 +141,11 @@ class NounCompounder(Composition):
             myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
         return myvectors
 
-    def run(self):
+    def run(self,parampair=('','')):
         self.option=self.options[0]
         self.myCompounder=DepCompounder(self.config)
         self.myCompounder.run()
-        self.compose()
+        self.compose(parampair=parampair)
 
 
 if __name__=="__main__":

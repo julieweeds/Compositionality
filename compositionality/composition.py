@@ -133,10 +133,11 @@ class Composition:
     featmax=3  #how many features of each path type to display when showing most salient features
     display=True
     allphrases=True  #include allphrases regardless of frequency
-    offsetting=1.0 #offset the dependency vector before composition (False/0 for baseline)
+
     headp=0.5
     reversed=False #reverse the order of the constituents before composition (True for order baseline)
     compop="add"
+    offsetting=1.0 #offset the dependency vector before composition (False/0 for baseline)
 
     ppmithreshold=0
     filterfreq=1000
@@ -286,10 +287,9 @@ class Composition:
             self.allphrases=(self.config.get('default','allphrases')=='True')
         except:
             self.allphraser=Composition.allphrases
-        try:
-            self.offsetting=float(self.config.get('default','offsetting'))
-        except:
-            self.offsetting=Composition.offsetting
+
+
+
         try:
             self.headp=float(self.config.get('default','headp'))
         except:
@@ -304,7 +304,10 @@ class Composition:
             self.compop=self.config.get('default','compop')
         except:
             self.compop=Composition.compop
-
+        try:
+            self.offsetting=self.config.get('default','offsetting')
+        except:
+            self.offsetting=Composition.offsetting
 
     #----HELPER FUNCTIONS
 
@@ -1040,7 +1043,7 @@ class Composition:
     #COMPOSE
     #load appropriate vectors, display most salient features for each vector, then runANcomposition and output to file
     #----
-    def compose(self):
+    def compose(self,parampair=('','')):
 
         if self.normalised:
             suffix=".norm"
@@ -1076,7 +1079,7 @@ class Composition:
 
             self.mostsalient()
 
-        self.output(self.runANcomposition(),self.outfile)
+        self.output(self.runANcomposition(parampair=parampair),self.outfile)
 
 
 
@@ -1119,7 +1122,7 @@ class Composition:
     def ANcompose(self,adj,noun):
         self.CompoundCompose(adj,noun,"mod")
 
-    def CompoundCompose(self,dep,head,rel,hp=0.5,compop="add"):
+    def CompoundCompose(self,dep,head,rel,hp=0.5,compop="add",offsetting=1):
         hdpos=Composition.headPoS.get(rel,"N")
         dppos=Composition.depPoS.get(rel,"J")
 
@@ -1134,9 +1137,9 @@ class Composition:
 
         entry=dep.split("/")[0]+"|"+rel+"|"+head
         print "Composing vectors for "+entry
-        self.ANvecs[entry]=self.doCompound(depvector,headvector,rel,hp=hp,op=compop)
+        self.ANvecs[entry]=self.doCompound(depvector,headvector,rel,hp=hp,op=compop,offsetting=offsetting)
         print "Composing path totals"
-        self.ANpathtots[entry]=self.doCompound(deppathtots,headpathtots,rel,hp=hp,op=compop)
+        self.ANpathtots[entry]=self.doCompound(deppathtots,headpathtots,rel,hp=hp,op=compop,offsetting=offsetting)
 
         # print self.ANpathtots[entry]
         # print "nn: "+str(self.ANpathtots[entry].get('nn',"not present"))
@@ -1146,18 +1149,18 @@ class Composition:
     #----
     #handle composition operations such as offsetting (required or not) and merge operation (add, min etc)
     #-----
-    def doCompound(self,depvector,headvector,rel,nntest=False,hp=0.5,op="add"):
+    def doCompound(self,depvector,headvector,rel,nntest=False,hp=0.5,op="add",offsetting=1):
         if self.reversed:
             temp =depvector
             depvector=headvector
             headvector=temp
 
-        if self.offsetting<=0:
+        if offsetting<=0:
             offsetvector=dict(depvector)
-        elif self.offsetting>=1:
+        elif offsetting>=1:
             offsetvector=self.offsetVector(depvector,rel)
         else:
-            offsetvector=self.add(self.offsetVector(depvector,rel),depvector,weight=self.offsetting)
+            offsetvector=self.add(self.offsetVector(depvector,rel),depvector,offsetting)
 
 
         if nntest:

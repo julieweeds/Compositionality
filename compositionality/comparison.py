@@ -7,6 +7,7 @@ from simEngine import SimEngine
 class Comparator():
     key1="observed"
     key2="composed"
+    offsetting=1.0 #offset the dependency vector before composition (False/0 for baseline)
 
     def __init__(self,configfile):
         self.config=ConfigParser.RawConfigParser()
@@ -54,25 +55,35 @@ class Comparator():
 
         try:
             self.nfolds=int(self.config.get('default','nfolds'))
-            self.trialp=ast.literal_eval(self.config.get('default','trialp'))
+            trialp=ast.literal_eval(self.config.get('default','trialp'))
             self.crossvalidate=True
+            self.paramdict={}
+            self.paramdict["offsetting"]=trialp
         except:
             self.nfolds=0
-            self.trialp=[]
+            self.paramdict={}
             self.crossvalidate=False
+
+            try:
+                offsetting=float(self.config.get('default','offsetting'))
+            except:
+                offsetting=Comparator.offsetting
+            self.paramdict["offsetting"]=offsetting
+
 
         if self.crossvalidate:
             print "Cross-valiation: number of folds = "+str(self.nfolds)
-            print self.trialp
+            print self.paramdict
         else:
             print "No cross-validation"
+            print self.paramdict
 
     def generate_SimEngine(self):
 
         if self.exp_type==('compounds'):
             simEngine=SimEngine(self.filenames,self.isListedCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.saliency,saliencyperpath=self.composer.saliencyperpath)
         elif self.exp_type==('simple_compounds'):
-            simEngine=SimEngine(self.filenames,self.isCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.salience,saliencyperpath=self.composer.saliencyperpath)
+            simEngine=SimEngine(self.filenames,self.isCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.saliency,saliencyperpath=self.composer.saliencyperpath)
 
         return simEngine
 
@@ -111,7 +122,7 @@ class Comparator():
                 fields=line.split('\t')
                 self.compounder.addIntSim(fields[1],fields[2],float(fields[3]))
 
-    def correlate(self,instream):
+    def correlate(self,instream,parampair=('','')):
 
         for line in instream:
             line=line.rstrip()
@@ -121,20 +132,23 @@ class Comparator():
 
         self.compounder.correlate()
         if self.crossvalidate:
-             self.compounder.crossvalidate(self.nfolds,p=str(self.composer.offsetting))
+             self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]))
 
 
     def run(self):
         if self.exp_type=='compounds':
-            self.composer.run()  #run composer to create composed vectors
-            self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
-            with open("testout","w") as outstream:
-                self.mySimEngine.pointwise(outstream)
 
-            self.loadFreqs()
-            self.calcInternalSims()
-            with open("testout",'r') as instream:
-                self.correlate(instream)
+            for key in self.paramdict.keys():
+                for value in self.paramdict[key]:
+                    self.composer.run(parampair=(key,value))  #run composer to create composed vectors
+                    self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
+                    with open("testout","w") as outstream:
+                        self.mySimEngine.pointwise(outstream)
+
+                    self.loadFreqs()
+                    self.calcInternalSims()
+                    with open("testout",'r') as instream:
+                        self.correlate(instream,parampair=(key,value))
 
 
         else:
