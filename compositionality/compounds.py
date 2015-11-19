@@ -37,6 +37,8 @@ class Compound:
 
     #root=("root",-1,0)
     #pos=("?",-1)
+    poshead={"nn":['N'],"amod":['N']}
+    posdep={"nn":['N'],"amod":['J','V']}
 
     def __init__(self,name,ctype="farahmand"):
         self.name=name
@@ -177,8 +179,12 @@ class Compound:
     def generate(self,rel_list):
         self.compounds={}
         for rel in rel_list:
-            acompound=self.getFirst()+"|"+rel+"|"+self.getSecond()+"/N"
-            self.compounds[rel]=acompound
+            self.compounds[rel]=[]
+            for hp in Compound.poshead[rel]:
+                #for dp in Compound.posdep[rel]:
+                #    acompound=self.getFirst()+"/"+dp+"|"+rel+"|"+self.getSecond()+"/"+hp
+                acompound=self.getFirst()+"|"+rel+"|"+self.getSecond()+"/"+hp
+                self.compounds[rel].append(acompound)
 
     def display(self):
         for line in self.getConll():
@@ -189,12 +195,14 @@ class Compound:
         print "-----"
 
     def display_compounds(self):
-        for value in self.compounds.values():
-            print value
+        for alist in self.compounds.values():
+            for value in alist:
+                print value
 
     def write_compounds_to_file(self,outpath):
-        for value in self.compounds.values():
-            outpath.write(value+"\n")
+        for alist in self.compounds.values():
+            for value in alist:
+                outpath.write(value+"\n")
 
     def assign_fold(self,fold):
         self.fold=fold
@@ -278,7 +286,8 @@ class Compounder:
 
         for compound in self.compounds.values():
             compound.generate(rel_list)
-            self.generated_compounds+=compound.compounds.values()
+            for value in compound.compounds.values():
+                self.generated_compounds+=value
             if outfile=="":
                 compound.display_compounds()
             else:
@@ -306,7 +315,7 @@ class Compounder:
         if phrase in self.compounds.keys():
             self.compounds[phrase].setFreq(freq)
 
-    def correlate(self):
+    def correlate(self, show_graph=True):
         listX=[]
         listY=[]
         listZ=[]
@@ -326,15 +335,15 @@ class Compounder:
 
         print "Mean Human Judgement score: ",np.mean(listX)
         print "Mean AutoSim score: ",np.mean(listY)
-        print "Mean Frequency: ",np.mean(listZ)
+        print "Mean Log Frequency: ",np.mean(listZ)
         print "Mean Constituent Similarity: ",np.mean(listA)
         print "Spearman's Correlation Coefficient and p'value for Human Judgements vs Automatic Similarity over %s values: "%(str(len(listX))),stats.spearmanr(np.array(listX),np.array(listY))
-        if graphing_loaded:
+        if graphing_loaded and show_graph:
             graphing.makescatter(listX,listY)
-        print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Frequency: ",stats.spearmanr(np.array(listX),np.array(listZ))
+        print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Log Frequency: ",stats.spearmanr(np.array(listX),np.array(listZ))
         #if graphing_loaded:
         #    graphing.makescatter(listX,listZ)
-        print "Spearman's Correlation Coefficient and p'value for Automatic Similarity vs Frequency: ", stats.spearmanr(np.array(listY),np.array(listZ))
+        print "Spearman's Correlation Coefficient and p'value for Automatic Similarity vs Log Frequency: ", stats.spearmanr(np.array(listY),np.array(listZ))
         #if graphing_loaded:
         #    graphing.makescatter(listY,listZ)
         print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Constituent Similarity: ", stats.spearmanr(np.array(listX),np.array(listA))
@@ -342,6 +351,7 @@ class Compounder:
         #    graphing.makescatter(listX,listA)
 
     def crossvalidate(self,folds,p=""):
+        matrix=[]
         for i in range(0,folds):
 
             TrainX=[]
@@ -358,8 +368,9 @@ class Compounder:
             trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
             testingR=stats.spearmanr(np.array(TestX),np.array(TestY))
             print p,i,trainingR[0],testingR[0]
-
-
+            line=[p,i,trainingR[0],testingR[0]]
+            matrix.append(line)
+        return matrix
 
 
 

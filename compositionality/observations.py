@@ -299,9 +299,9 @@ class CompoundFinder(Compounder):
             token_to_use=self.lemma
         else:
             token_to_use=self.lex
-        cmpd=sentence[str(sid)][token_to_use]+"/"+deppos+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][token_to_use]
+        cmpd=sentence[str(sid)][token_to_use]+"|"+sentence[str(sid)][self.relname]+"-"+deppos+"|"+sentence[str(sid+1)][token_to_use]
         sentence[str(sid+1)][token_to_use]=cmpd
-        if self.lemma and not self.uselemma >-1:
+        if self.lemma >-1 and not self.uselemma:
             sentence[str(sid+1)][self.lemma]=sentence[str(sid)][self.lemma]+"|"+sentence[str(sid)][self.relname]+"|"+sentence[str(sid+1)][self.lemma]
 
         sentence[str(sid)]=self.erased

@@ -1,7 +1,7 @@
 __author__ = 'juliewe'
 #compare observed and composed vectors, correlate with compositionality judgements
 
-import compounds,sys, ConfigParser,ast, nouncompounds
+import compounds,sys, ConfigParser,ast, nouncompounds, numpy as np
 from simEngine import SimEngine
 
 class Comparator():
@@ -38,7 +38,7 @@ class Comparator():
         self.testcompoundfile=self.config.get('compounder','compound_file')
 
         self.reducestring={}
-        self.reducestring[Comparator.key1]=".nouns.reduce_1_1"
+        self.reducestring[Comparator.key1]=".nouns.reduce_0_2"
         self.normstring=".filtered"
         if self.composer.normalised:
             self.normstring+=".norm"
@@ -130,14 +130,39 @@ class Comparator():
             if fields[1]==Comparator.key1 and fields[2]== Comparator.key2:
                 self.compounder.addAutoSim(fields[0],fields[3])
 
-        self.compounder.correlate()
+        self.compounder.correlate(show_graph=(not self.crossvalidate))
         if self.crossvalidate:
-             self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]))
+            return self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]))
 
+        else:
+            return []
+
+    def analyse(self,cv_matrix):
+        print cv_matrix
+
+        testrs=[]
+        testps=[]
+        #analyse training performance
+        #for each fold find best parameter
+        #for that fold and parameter collect test performance
+        for i in range(0,self.nfolds):
+            maxtraining=0
+            maxindex=-1
+            for index,line in enumerate(cv_matrix):
+                if line[1]==i:
+                    if line[2]>maxtraining:
+                        maxtraining=line[2]
+                        maxindex=index
+            testrs.append(cv_matrix[maxindex][3])
+            testps.append(cv_matrix[maxindex][0])
+
+        perf=np.mean(testrs)
+        print "Cross-validated performance",str(perf)
+        print "Chosen parameter settings: ",testps
 
     def run(self):
         if self.exp_type=='compounds':
-
+            cv_matrix=[]
             for key in self.paramdict.keys():
                 for value in self.paramdict[key]:
                     self.composer.run(parampair=(key,value))  #run composer to create composed vectors
@@ -148,8 +173,14 @@ class Comparator():
                     self.loadFreqs()
                     self.calcInternalSims()
                     with open("testout",'r') as instream:
-                        self.correlate(instream,parampair=(key,value))
+                        m=self.correlate(instream,parampair=(key,value))
+                    if len(m)>0:
+                        for line in m:
+                            cv_matrix.append(line)
 
+
+            if len(cv_matrix)>0:
+                self.analyse(cv_matrix)
 
         else:
             self.mySimEngine.allpairs()

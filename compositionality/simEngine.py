@@ -115,7 +115,7 @@ class SimEngine():
                 else:
                     #print "Ignoring : "+token
                     pass
-        print "Loaded %s vectors from file with key: %s" %(str(len(self.vectors[type].keys())),type)
+        print "Loaded %s vectors from file %s with key: %s" %(str(len(self.vectors[type].keys())),vectorfile, type)
 
     def addfile(self,key, filename):
         self.filenames[key]=filename
