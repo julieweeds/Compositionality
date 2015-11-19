@@ -121,6 +121,23 @@ def join (alist,achar):
         return ""
 
 
+def checkphraseformat(line):
+
+    entry=line.split("\t")[0]
+    phrasefields=entry.split('|')
+    if len(phrasefields)==3:
+        depparts=phrasefields[0].split("/")
+        if len(depparts)==2:
+            restline=line[len(entry):]
+            entry=depparts[0]+"|"+phrasefields[1]+"-"+depparts[1]+"|"+phrasefields[2]
+            line=entry+restline
+            return line
+        else:
+            return line
+
+    else:
+        return line
+
 class Composition:
 
     nouns=[]
@@ -466,7 +483,7 @@ class Composition:
 
             #pos=entry.split("/")[-1].lower()
             if pos.startswith("n"):
-                nouns.write(line+"\n")
+                nouns.write(checkphraseformat(line)+"\n")
             elif pos.startswith("v"):
                 verbs.write(line+"\n")
             elif pos.startswith("j"):
