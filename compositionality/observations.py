@@ -22,6 +22,7 @@ class CompoundFinder(Compounder):
         self.contiguous=(self.config.get('default','contiguous')=='True')
         self.ptype=self.config.get('default','ptype')
         self.convert=(self.config.get('default','convert')=='True')
+        self.convert7=(self.config.get('default','convert7')=='True')
         self.clean=(self.config.get('default','clean')=='True')
         self.dir=(self.config.get('default','dir')=='True')
         self.readcompounds()
@@ -67,9 +68,11 @@ class CompoundFinder(Compounder):
         if file.endswith(".gz"):
             fp = gzip.open(file)
             if self.convert:
-                self.outstream=gzip.open(file[0:-3]+".compounds"+".gz","w")
+                self.outstream=gzip.open(file[0:-3]+"4.compounds"+".gz","w")
             if self.clean:
                 self.cleanstream=gzip.open(file[0:-3]+".clean"+".gz","w")
+            if self.convert7:
+                self.convert7stream=gzip.open(file[0:-3]+"7.compounds"+".gz","w")
 
         else:
             try:
@@ -80,9 +83,11 @@ class CompoundFinder(Compounder):
                 except:
                     self.skippedfiles.append(file)
             if self.convert:
-                self.outstream = open(file+".compounds.gz","w")
+                self.outstream = open(file+"4.compounds.gz","w")
             if self.clean:
                 self.cleanstream = open(file+".clean.gz","w")
+            if self.convert7:
+                self.convert7stream=gzip.open(file[0:-3]+"7.compounds"+".gz","w")
 
 
         sentencebuffer={}
@@ -116,6 +121,8 @@ class CompoundFinder(Compounder):
             self.outstream.close()
         if self.clean:
             self.cleanstream.close()
+        if self.convert7:
+            self.convert7stream.close()
 
     def process_corpus(self):
 
@@ -288,6 +295,7 @@ class CompoundFinder(Compounder):
                 pass
 
         if self.convert: self.output_sentence(sentence, self.outstream)
+        if self.convert7: self.output_sentence(sentence, self.convert7stream, outputformat="conll7")
 
     def convert_compounds(self,sentence,sid):
         if self.ptype =="conll7" or self.ptype=="nyt":
@@ -318,7 +326,7 @@ class CompoundFinder(Compounder):
 
         return sentence
 
-    def output_sentence(self,sentence,out):
+    def output_sentence(self,sentence,out,outputformat="conll4"):
         slength=len(sentence.keys())
         index_adj=1-self.firstindex
         for i in range(self.firstindex,slength+self.firstindex):
@@ -330,26 +338,32 @@ class CompoundFinder(Compounder):
 
 
                 out.write(str(i+index_adj))
-                for value in self.aptTransform(arc):
+                for value in self.aptTransform(arc,outputformat):
                     out.write("\t"+str(value))
                 out.write("\n")
 
         out.write("\n")
 
-    def aptTransform(self,arc):
+    def aptTransform(self,arc,outputformat="conll4"):
     #ptype=conll7: arc = [form,lemma,POS,NER,head,rel]
 
     #aptInput requires: arc = [form/POS,head,rel]
-        if self.uselemma:
-            token_to_use = self.lemma
+        if outputformat==self.ptype:
+            return arc
         else:
-            token_to_use = self.lex
+            if self.uselemma:
+                token_to_use = self.lemma
+            else:
+                token_to_use = self.lex
 
-        index_adj=1-self.firstindex
-        if self.ptype=="conll7" or self.ptype=="nyt":
-            return [arc[token_to_use].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
-        else:
-            return [getLex(arc[token_to_use],tdelim='|')+"/"+getPos(arc[token_to_use]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+            index_adj=1-self.firstindex
+
+            if self.ptype=="conll7" or self.ptype=="nyt":
+                return [arc[token_to_use].lower()+"/"+self.getPosTag(arc[self.pos]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+            else:
+                return [getLex(arc[token_to_use],tdelim='|')+"/"+getPos(arc[token_to_use]),int(arc[self.headpos])+index_adj,arc[self.relname]]
+
+
 
     def getPosTag(self,tag):
         newtag=tag[0]

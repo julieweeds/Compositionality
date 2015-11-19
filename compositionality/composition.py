@@ -161,8 +161,8 @@ class Composition:
     saliency=0
     saliencyperpath=False
 
-    headPoS={"nn":"N","amod":"N","mod":"N"}
-    depPoS={"nn":"N","amod":"J","mod":"J"}
+    headPoS={"nn":"N","amod":"N","mod":"N","nn-n":"N","amod-j":"N","amod-v":"N"}
+    depPoS={"nn":"N","amod":"J","mod":"J","nn-n":"N","amod-j":"J","amod-v":"V"}
 
 
     def __init__(self,options):

@@ -37,8 +37,7 @@ class Compound:
 
     #root=("root",-1,0)
     #pos=("?",-1)
-    poshead={"nn":['N'],"amod":['N']}
-    posdep={"nn":['N'],"amod":['J','V']}
+
 
     def __init__(self,name,ctype="farahmand"):
         self.name=name
@@ -179,12 +178,8 @@ class Compound:
     def generate(self,rel_list):
         self.compounds={}
         for rel in rel_list:
-            self.compounds[rel]=[]
-            for hp in Compound.poshead[rel]:
-                #for dp in Compound.posdep[rel]:
-                #    acompound=self.getFirst()+"/"+dp+"|"+rel+"|"+self.getSecond()+"/"+hp
-                acompound=self.getFirst()+"|"+rel+"|"+self.getSecond()+"/"+hp
-                self.compounds[rel].append(acompound)
+            acompound=self.getFirst()+"|"+rel+"|"+self.getSecond()+"/N"
+            self.compounds[rel]=acompound
 
     def display(self):
         for line in self.getConll():
@@ -195,14 +190,13 @@ class Compound:
         print "-----"
 
     def display_compounds(self):
-        for alist in self.compounds.values():
-            for value in alist:
-                print value
+        for value in self.compounds.values():
+
+            print value
 
     def write_compounds_to_file(self,outpath):
-        for alist in self.compounds.values():
-            for value in alist:
-                outpath.write(value+"\n")
+        for value in self.compounds.values():
+            outpath.write(value+"\n")
 
     def assign_fold(self,fold):
         self.fold=fold
