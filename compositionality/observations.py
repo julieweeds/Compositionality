@@ -16,9 +16,9 @@ class CompoundFinder(Compounder):
 
     postags=["N","V","J","R","F"]
 
-    def __init__(self,configfile):
+    def __init__(self,configfile,suffix=""):
         Compounder.__init__(self,configfile)
-        self.corpusfile=self.config.get('default','corpus')
+        self.corpusfile=self.config.get('default','corpus')+suffix
         self.contiguous=(self.config.get('default','contiguous')=='True')
         self.ptype=self.config.get('default','ptype')
         self.convert=(self.config.get('default','convert')=='True')
@@ -403,5 +403,9 @@ class CompoundFinder(Compounder):
 
 
 if __name__=="__main__":
-    myCompoundFinder=CompoundFinder(sys.argv[1])
+    if len(sys.argv)>2:
+        suffix=sys.argv[2]
+    else:
+        suffix=""
+    myCompoundFinder=CompoundFinder(sys.argv[1],suffix=suffix)
     myCompoundFinder.run()
