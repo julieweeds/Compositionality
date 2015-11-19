@@ -22,7 +22,10 @@ class CompoundFinder(Compounder):
         self.contiguous=(self.config.get('default','contiguous')=='True')
         self.ptype=self.config.get('default','ptype')
         self.convert=(self.config.get('default','convert')=='True')
-        self.convert7=(self.config.get('default','convert7')=='True')
+        try:
+            self.convert7=(self.config.get('default','convert7')=='True')
+        except:
+            self.convert7=False
         self.clean=(self.config.get('default','clean')=='True')
         self.dir=(self.config.get('default','dir')=='True')
         self.readcompounds()
