@@ -28,8 +28,13 @@ def getLex(word,delim='/',postagged=True,tdelim=' '):
         return word
 
 def matchmake(phrase):
-    tokens=phrase.split('|')
-    return tokens[0]+" "+tokens[2],tokens[1]
+    try:
+
+        tokens=phrase.split('|')
+        return tokens[0]+" "+tokens[2],tokens[1]
+    except:
+        print "Non-phrase: ",phrase
+        return phrase,"ignore"
 
 
 
@@ -191,7 +196,6 @@ class Compound:
 
     def display_compounds(self):
         for value in self.compounds.values():
-
             print value
 
     def write_compounds_to_file(self,outpath):
@@ -213,8 +217,8 @@ class Compounder:
 
 #        print self.configured
         self.compounds={} #key is name, value is list of compounds
-        self.firstindex={} #key is first word, value is name
-        self.secondindex={} #key is second word, value is name
+        #self.firstindex={} #key is first word, value is name
+        #self.secondindex={} #key is second word, value is name
         self.ctype=self.config.get('default','ctype')
         try:
             self.compound_file=self.config.get('default','compound_file')
@@ -236,12 +240,12 @@ class Compounder:
 
                     if self.compounds.get(aCompound.name,None) == None:
                         self.compounds[aCompound.name]=aCompound
-                        sofar= self.firstindex.get(aCompound.getFirst(),[])
-                        sofar.append(aCompound.name)
-                        self.firstindex[aCompound.getFirst()]=sofar
-                        sofar=self.secondindex.get(aCompound.getSecond(),[])
-                        sofar.append(aCompound.name)
-                        self.secondindex[aCompound.getSecond()]=sofar
+                        #sofar= self.firstindex.get(aCompound.getFirst(),[])
+                        #sofar.append(aCompound.name)
+                        #self.firstindex[aCompound.getFirst()]=sofar
+                        #sofar=self.secondindex.get(aCompound.getSecond(),[])
+                        #sofar.append(aCompound.name)
+                        #self.secondindex[aCompound.getSecond()]=sofar
                     else:
                         print "Error: Duplicate noun compound"
 
@@ -262,16 +266,17 @@ class Compounder:
 
                     if self.compounds.get(aCompound.name,None) == None:
                         self.compounds[aCompound.name]=aCompound
-                        sofar= self.firstindex.get(aCompound.getFirst(),[])
-                        sofar.append(aCompound.name)
-                        self.firstindex[aCompound.getFirst()]=sofar
-                        sofar=self.secondindex.get(aCompound.getSecond(),[])
-                        sofar.append(aCompound.name)
-                        self.secondindex[aCompound.getSecond()]=sofar
+                        #sofar= self.firstindex.get(aCompound.getFirst(),[])
+                        #sofar.append(aCompound.name)
+                        #self.firstindex[aCompound.getFirst()]=sofar
+                        #sofar=self.secondindex.get(aCompound.getSecond(),[])
+                        #sofar.append(aCompound.name)
+                        #self.secondindex[aCompound.getSecond()]=sofar
                     else:
                         print "Error: Duplicate noun compound"
 
 
+    #obsolete
     def generate(self,rel_list,outfile=""):
         self.readcompounds()
         self.generated_compounds=[]
@@ -281,7 +286,7 @@ class Compounder:
         for compound in self.compounds.values():
             compound.generate(rel_list)
             for value in compound.compounds.values():
-                self.generated_compounds+=value
+                self.generated_compounds.append(value)
             if outfile=="":
                 compound.display_compounds()
             else:
@@ -305,6 +310,7 @@ class Compounder:
 
 
     def addFreq(self,compound,freq):
+        print compound
         phrase,type = matchmake(compound.split('/')[0])
         if phrase in self.compounds.keys():
             self.compounds[phrase].setFreq(freq)

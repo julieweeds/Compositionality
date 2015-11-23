@@ -22,10 +22,10 @@ class Comparator():
         self.filenames[Comparator.key1]=self.parentdir+self.config.get('default','observedfile')
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
-            self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
+            #self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
+            self.compounder.readcompounds()
+            self.loadFreqs(self.rels,outfile=self.testcompoundfile)
             print self.compounder.generated_compounds
-            print self.compounder.firstindex.keys()
-            print self.compounder.secondindex.keys()
             if self.crossvalidate:
                 self.compounder.setup_folds(self.nfolds)
 
@@ -68,7 +68,7 @@ class Comparator():
                 offsetting=float(self.config.get('default','offsetting'))
             except:
                 offsetting=Comparator.offsetting
-            self.paramdict["offsetting"]=offsetting
+            self.paramdict["offsetting"]=[offsetting]
 
 
         if self.crossvalidate:
@@ -77,6 +77,8 @@ class Comparator():
         else:
             print "No cross-validation"
             print self.paramdict
+
+
 
     def generate_SimEngine(self):
 
@@ -96,16 +98,27 @@ class Comparator():
 
     def isConstituent(self,token):
         lex =token.split('/')[0]
-        return lex in self.compounder.firstindex.keys() or lex in self.compounder.secondindex.keys()
+        return lex in self.composer.getLeftIndex() or lex in self.composer.getRightIndex()
 
-    def loadFreqs(self):
+    def loadFreqs(self,rel_list,outfile): #should be part of compounder
         print("Loading "+self.freqfile+" for frequency analysis")
-        with open(self.freqfile) as instream:
-            for line in instream:
-                line=line.rstrip()
-                fields=line.split('\t')
-                if len(fields[0].split('|'))==3:
-                    self.compounder.addFreq(fields[0],float(fields[1]))
+        with open(outfile,"w") as outstream:
+            self.compounder.generated_compounds=[]
+            with open(self.freqfile) as instream:
+                for line in instream:
+                    line=line.rstrip()
+                    fields=line.split('\t')
+                    parts=fields[0].split('|')
+
+
+
+                    if len(parts)==3 and parts[1] in rel_list:
+                        posparts=parts[2].split('/')
+                        if len(posparts)==2:
+
+                            self.compounder.addFreq(fields[0],float(fields[1]))
+                            self.compounder.generated_compounds.append(fields[0])
+                            outstream.write(fields[0]+"\n")
 
 
 
@@ -170,7 +183,6 @@ class Comparator():
                     with open("testout","w") as outstream:
                         self.mySimEngine.pointwise(outstream)
 
-                    self.loadFreqs()
                     self.calcInternalSims()
                     with open("testout",'r') as instream:
                         m=self.correlate(instream,parampair=(key,value))

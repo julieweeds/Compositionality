@@ -13,8 +13,8 @@ def union(list1,list2):
     return list1
 
 class Compound:
-    leftRels={"J":["amod","mod"],"N":["nn"]}
-    rightRels={"N":["amod","nn","mod"],"J":[]}
+    leftRels={"J":["amod","mod","amod-j"],"N":["nn","nn-n"],"V":["amod-v"]}
+    rightRels={"N":["amod","nn","mod","amod-j","amod-v","nn-n"],"J":[],"V":[]}
 
     def __init__(self,text):
         self.text=text
@@ -66,7 +66,7 @@ class DepCompounder:
         self.leftindex={}
         self.relindex={}
         self.rightindex={}
-        self.wordsByPos={"J":[],"N":[]}
+        self.wordsByPos={"J":[],"N":[],"V":[]}
 
     def readcompounds(self):
         print "Reading "+self.compoundfile
@@ -140,6 +140,12 @@ class NounCompounder(Composition):
 
             myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
         return myvectors
+
+    def getLeftIndex(self):
+        return self.myCompounder.leftindex.keys()
+
+    def getRightIndex(self):
+        return self.myCompounder.rightindex.keys()
 
     def run(self,parampair=('','')):
         self.option=self.options[0]

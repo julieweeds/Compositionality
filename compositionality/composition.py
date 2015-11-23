@@ -1085,7 +1085,7 @@ class Composition:
 
 
 
-        for pos in ["N","J"]:
+        for pos in ["N","J","V"]:
             self.pos=pos
             self.set_words()
             self.feattotsbypos[pos]=self.load_coltotals(cds=self.smooth_ppmi)
@@ -1094,7 +1094,8 @@ class Composition:
             self.pathtotsbypos[pos]=self.compute_nounpathtotals(self.vecsbypos[pos])
             self.typetotsbypos[pos]=self.compute_typetotals(self.feattotsbypos[pos])
 
-            self.mostsalient()
+            #self.mostsalient()
+
 
         self.output(self.runANcomposition(parampair=parampair),self.outfile)
 
@@ -1216,7 +1217,7 @@ class Composition:
                 offsetvector.__delitem__(feature)
             else:
                 COMPOUNDvector[feature]=hp*headvector[feature]
-            if count%10000==0:print"Processed "+str(count)
+            #if count%10000==0:print"Processed "+str(count)
 
         print "Intersecting features: "+str(len(intersect)),intersect
         #print "Processing remaining adj features "+str(len(adjvector.keys()))+" : reduced to : "+str(len(offsetvector.keys()))
