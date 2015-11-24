@@ -52,7 +52,7 @@ class Compound:
         self.counts=[]
         self.ctype=ctype
         self.autosims={}
-        self.frequency=-1
+        self.freq=0
         self.intSim=0
         self.fold=-1  #if cross-validation taking place, this represents the bin this compound is in
 
@@ -63,7 +63,7 @@ class Compound:
         self.judgements=[float(item) for item in NCs]
 
     def setFreq(self,freq):
-        self.freq=freq
+        self.freq+=freq
 
     def getFreq(self):
         return np.log(self.freq)
@@ -104,6 +104,15 @@ class Compound:
         #     return True
         else:
             return False
+
+    def lemmamatch(self,phrase,type):
+        tokens=phrase.split(' ')
+        if type[-1]=='v':
+            if tokens[1][0:3]==self.getSecond()[0:3] and tokens[0][0:3]==self.getFirst()[0:3]:
+                return True
+        return False
+
+
 
     def filter(self,freqthresh,blacklist):
 
@@ -225,7 +234,7 @@ class Compounder:
 
         except:
             print "Error: problem with configuration"
-        random.seed(43)
+        random.seed(17)
 
     def readcompounds(self):
         if self.ctype=="reddy":
@@ -300,6 +309,11 @@ class Compounder:
         #print phrase
         if phrase in self.compounds.keys():
             self.compounds[phrase].addAutoSim(type,sim)
+        else:
+            for compound in self.compounds.values():
+                if compound.lemmamatch(phrase,type):
+                    #print "Lemma match for ",phrase,type
+                    compound.addAutoSim(type,sim)
 
 
     def addIntSim(self,left,right,sim):
@@ -310,10 +324,16 @@ class Compounder:
 
 
     def addFreq(self,compound,freq):
-        print compound
+        #print compound
         phrase,type = matchmake(compound.split('/')[0])
         if phrase in self.compounds.keys():
             self.compounds[phrase].setFreq(freq)
+        else:
+            #print "attempting lemma match for", phrase,type
+            for compound in self.compounds.values():
+                if compound.lemmamatch(phrase,type):
+                    #print "Lemma match for ",phrase, type
+                    compound.setFreq(freq)
 
     def correlate(self, show_graph=True):
         listX=[]
@@ -346,7 +366,7 @@ class Compounder:
         print "Spearman's Correlation Coefficient and p'value for Automatic Similarity vs Log Frequency: ", stats.spearmanr(np.array(listY),np.array(listZ))
         #if graphing_loaded:
         #    graphing.makescatter(listY,listZ)
-        print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Constituent Similarity: ", stats.spearmanr(np.array(listX),np.array(listA))
+       # print "Spearman's Correlation Coefficient and p'value for Human Judgments vs Constituent Similarity: ", stats.spearmanr(np.array(listX),np.array(listA))
         #if graphing_loaded:
         #    graphing.makescatter(listX,listA)
 

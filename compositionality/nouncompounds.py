@@ -105,10 +105,16 @@ class DepCompounder:
 class NounCompounder(Composition):
     left=Composition.depPoS
     right=Composition.headPoS
+    basicRel=Composition.basicRel
+    rels_to_include=[]
 
     def set_words(self):
         self.words=self.myCompounder.wordsByPos[self.pos]
         if self.words==[]:self.words=['-']
+
+
+    def includeRel(self,rel):
+        return NounCompounder.rels_to_include==[] or rel in NounCompounder.rels_to_include
 
 
     def runANcomposition(self,parampair=('','')):
@@ -119,26 +125,27 @@ class NounCompounder(Composition):
             offsetting=self.offsetting
 
         for rel in self.myCompounder.relindex.keys():
-            print "Composing type totals for "+rel
-            self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
-            print "Composing feature totals for "+rel
-            self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
+            if self.includeRel(rel):
+                print "Composing type totals for "+rel
+                self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
+                print "Composing feature totals for "+rel
+                self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
 
-            self.ANvecs={}
-            self.ANtots={}
-            self.ANpathtots={}
+                self.ANvecs={}
+                self.ANtots={}
+                self.ANpathtots={}
 
-            for compound in self.myCompounder.relindex[rel]:
-                #should check not lower case for pos
-                try:
-                    #print "Composing: "+compound.text
-                    self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
+                for compound in self.myCompounder.relindex[rel]:
+                    #should check not lower case for pos
+                    try:
+                        #print "Composing: "+compound.text
+                        self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
 
-                except KeyError:
-                    pass
-                    #print "Warning: 1 or more vectors not present for "+compound.text
+                    except KeyError:
+                        pass
+                        #print "Warning: 1 or more vectors not present for "+compound.text
 
-            myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
+                myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
         return myvectors
 
     def getLeftIndex(self):

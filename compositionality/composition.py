@@ -163,6 +163,7 @@ class Composition:
 
     headPoS={"nn":"N","amod":"N","mod":"N","nn-n":"N","amod-j":"N","amod-v":"N"}
     depPoS={"nn":"N","amod":"J","mod":"J","nn-n":"N","amod-j":"J","amod-v":"V"}
+    basicRel={"nn":"nn","amod":"amod","mod":"mod","nn-n":"nn","amod-j":"amod","amod-v":"amod"}
 
 
     def __init__(self,options):
@@ -334,36 +335,40 @@ class Composition:
     #2) elseif filterfile not present, add any nouns/adjectives in defaults
     # 3) elseif filterfile is present, add these words to self.words
     #-----
-    def set_words(self):
+    def set_words(self,words=[]):
 
-        if self.comppairfile!="":
-            if self.pos=="J":
-                index=2
+
+        if words==[]:
+            if self.comppairfile!="":
+                if self.pos=="J":
+                    index=2
+                else:
+                    index=0
+                self.words=[]
+                for pair in self.comppairlist:
+                    if not pair[index] in self.words:
+                        self.words.append(pair[index])
+
+
+            elif self.filterfile=="":
+                if self.pos=="N":
+                    self.words=Composition.nouns
+                elif self.pos=="J":
+                    self.words=Composition.adjectives
+                elif self.pos=="V":
+                    self.words=Composition.verbs
+                elif self.pos=="R":
+                    self.words=Composition.adverbs
+                else:
+                    self.words=Composition.others
             else:
-                index=0
-            self.words=[]
-            for pair in self.comppairlist:
-                if not pair[index] in self.words:
-                    self.words.append(pair[index])
-
-
-        elif self.filterfile=="":
-            if self.pos=="N":
-                self.words=Composition.nouns
-            elif self.pos=="J":
-                self.words=Composition.adjectives
-            elif self.pos=="V":
-                self.words=Composition.verbs
-            elif self.pos=="R":
-                self.words=Composition.adverbs
-            else:
-                self.words=Composition.others
+                with open(self.filterfile) as fp:
+                    self.wordlistlist=yaml.safe_load(fp)
+                self.words=[]
+                for wordlist in self.wordlistlist:
+                    self.words+=wordlist
         else:
-            with open(self.filterfile) as fp:
-                self.wordlistlist=yaml.safe_load(fp)
-            self.words=[]
-            for wordlist in self.wordlistlist:
-                self.words+=wordlist
+            self.words=words
         print "Setting words of interest: ",self.words
 
 
@@ -1176,9 +1181,9 @@ class Composition:
         if offsetting<=0:
             offsetvector=dict(depvector)
         elif offsetting>=1:
-            offsetvector=self.offsetVector(depvector,rel)
+            offsetvector=self.offsetVector(depvector,Composition.basicRel[rel])
         else:
-            offsetvector=self.add(self.offsetVector(depvector,rel),depvector,offsetting)
+            offsetvector=self.add(self.offsetVector(depvector,Composition.basicRel[rel]),depvector,offsetting)
 
 
         if nntest:
@@ -1219,7 +1224,7 @@ class Composition:
                 COMPOUNDvector[feature]=hp*headvector[feature]
             #if count%10000==0:print"Processed "+str(count)
 
-        print "Intersecting features: "+str(len(intersect)),intersect
+        print "Intersecting features: "+str(len(intersect))
         #print "Processing remaining adj features "+str(len(adjvector.keys()))+" : reduced to : "+str(len(offsetvector.keys()))
         for feature in offsetvector.keys():
             COMPOUNDvector[feature]=(1-hp)*offsetvector[feature]
@@ -1234,7 +1239,7 @@ class Composition:
                 COMPOUNDvector[feature]=min(float(headvector[feature]),float(offsetvector[feature]))
                 intersect.append(feature)
 
-        print "Intersecting features: "+str(len(intersect)),intersect
+        print "Intersecting features: "+str(len(intersect))
         return COMPOUNDvector
 
     def addAN(self,adjvector,nounvector):
@@ -1345,7 +1350,7 @@ class Composition:
         self.output(self.load_vectors(self.inpath),self.inpath+".new")
 
     #----main run function
-    def run(self):
+    def run(self,words=[]):
 
          #if present load phrases for composition
         # and set words/paths of interest
@@ -1355,7 +1360,7 @@ class Composition:
                 self.comppairlist = yaml.safe_load(fp)
         else:
             self.comppairlist=[]
-        self.set_words()
+        self.set_words(words=words)
 
         while len(self.options)>0:
             self.option=self.options[0]

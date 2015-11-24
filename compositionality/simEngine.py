@@ -79,8 +79,9 @@ class SimEngine():
 
     minorder=1 #minimum order to be used in similarity calculations
     maxorder=1 #maximum order to be used in simiarity calculations
-    #paths_to_include=['_dobj']  #empty to include all
+    #paths_to_include=['_dobj','amod','nn','_nn','_nsubj']  #empty to include all
     paths_to_include=[]
+    blacklist=['punct']
 
     def __init__(self,filename_dict,include_function=isAny,pathdelim="?",saliency=0,saliencyperpath=False):
         self.filenames=filename_dict
@@ -117,6 +118,7 @@ class SimEngine():
                     pass
         print "Loaded %s vectors from file %s with key: %s" %(str(len(self.vectors[type].keys())),vectorfile, type)
 
+
     def addfile(self,key, filename):
         self.filenames[key]=filename
         self.vectors[key]={}
@@ -129,6 +131,8 @@ class SimEngine():
     def includepath(self,feat):
         if len(SimEngine.paths_to_include)>0:
             return getpathtype(feat) in SimEngine.paths_to_include
+        elif len(SimEngine.blacklist)>0:
+            return getpathtype(feat) not in SimEngine.blacklist
         else:
             return True
 

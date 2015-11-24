@@ -1,7 +1,7 @@
 __author__ = 'juliewe'
 #compare observed and composed vectors, correlate with compositionality judgements
 
-import compounds,sys, ConfigParser,ast, nouncompounds, numpy as np
+import compounds,sys, ConfigParser,ast, nouncompounds, numpy as np, composition,math
 from simEngine import SimEngine
 
 class Comparator():
@@ -28,7 +28,9 @@ class Comparator():
             print self.compounder.generated_compounds
             if self.crossvalidate:
                 self.compounder.setup_folds(self.nfolds)
-
+        print "Revectorising observed phrasal vectors"
+        self.revectorise_observed(configfile,self.compounder.generated_compounds)
+        print "Reloading observed phrasal vectors"
         self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
     def setup_compounds_exp(self,configfile):
@@ -42,12 +44,14 @@ class Comparator():
         self.normstring=".filtered"
         if self.composer.normalised:
             self.normstring+=".norm"
+
+
         if self.composer.weighting in ['smooth_ppmi','ppmi','pnppmi','gof_ppmi']:
             self.weightingstring="."+self.composer.weighting
         if self.composer.ppmithreshold>0:
             self.weightingstring+="_"+str(self.composer.ppmithreshold)
         else: self.weightstring=""
-
+        #self.weightingstring=""
 
         self.freqfile=self.filenames[Comparator.key1]+self.reducestring[Comparator.key1]+".rtot"
         for type in self.filenames.keys():
@@ -78,7 +82,10 @@ class Comparator():
             print "No cross-validation"
             print self.paramdict
 
-
+    def revectorise_observed(self,configfile,phraselist):
+        vectoriser=composition.Composition(["config",configfile])
+        vectoriser.options=['revectorise']
+        vectoriser.run(phraselist)
 
     def generate_SimEngine(self):
 
@@ -109,9 +116,6 @@ class Comparator():
                     line=line.rstrip()
                     fields=line.split('\t')
                     parts=fields[0].split('|')
-
-
-
                     if len(parts)==3 and parts[1] in rel_list:
                         posparts=parts[2].split('/')
                         if len(posparts)==2:
@@ -170,7 +174,8 @@ class Comparator():
             testps.append(cv_matrix[maxindex][0])
 
         perf=np.mean(testrs)
-        print "Cross-validated performance",str(perf)
+        error=np.std(testrs)/math.sqrt(self.nfolds)
+        print "Cross-validated performance",str(perf),str(error)
         print "Chosen parameter settings: ",testps
 
     def run(self):
@@ -183,7 +188,7 @@ class Comparator():
                     with open("testout","w") as outstream:
                         self.mySimEngine.pointwise(outstream)
 
-                    self.calcInternalSims()
+                    #self.calcInternalSims()
                     with open("testout",'r') as instream:
                         m=self.correlate(instream,parampair=(key,value))
                     if len(m)>0:
