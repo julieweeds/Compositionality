@@ -8,6 +8,27 @@ from composition import getorder,getpathtype
 def isAny(token):
     return True
 
+def profile(featdict,minorder=0,maxorder=10):
+
+        paths={}
+        totalweight=0
+        thisorderweight=0
+        for feat in featdict.keys():
+            path = getpathtype(feat)
+            order = getorder(feat)
+            weight= featdict[feat]
+            sofar=paths.get(path,0)
+            if order>=minorder and order<=maxorder:
+                paths[path]=sofar+weight
+                thisorderweight+=weight
+            totalweight+=weight
+
+        print "total weight of features",totalweight
+        print "total weight of required order features",thisorderweight
+        profile=sorted(paths.items(),key=itemgetter(1),reverse=True)
+
+        print profile
+
 class WordVector:
 
     def __init__(self,token):
@@ -16,9 +37,11 @@ class WordVector:
         self.array=None #array representation
         self.lgth=-1
         self.wdth=-1
+        self.total=0
 
     def addfeature(self,f,sc):
         self.features[f]=sc
+        self.total+=sc
 
     def makearray(self,fk_idx):
         temparray=np.zeros(len(fk_idx))
@@ -29,7 +52,7 @@ class WordVector:
 
     def width(self):
         if self.wdth==-1:
-            self.width=len(self.features.keys())
+            self.wdth=len(self.features.keys())
         return self.wdth
 
     def length(self):
@@ -39,6 +62,11 @@ class WordVector:
 
     def dotprod(self,anarray):
         return self.array.multiply(anarray).sum()
+
+
+
+    def profile(self,minorder=0,maxorder=10):
+        profile(self.featdict,minorder,maxorder)
 
     def cosine(self,avector):
 
@@ -50,6 +78,49 @@ class WordVector:
             sim = dotprod/(self.length()*avector.length())
 
         return sim
+
+    def intersection(self,avector):
+        intersect=0
+        weight=0
+        theset={}
+        diff={}
+        for feat in self.features.keys():
+            if feat in avector.features.keys():
+                intersect+=1
+                iweight=avector.features[feat]
+                weight+=iweight
+                theset[feat]=iweight
+            else:
+                diff[feat]=self.features[feat]
+        #profile(theset)
+        #profile(diff)
+        return intersect,weight
+
+    def jaccard(self,avector):
+        intersect= self.intersection(avector)[0]
+        if intersect>0:
+            den =self.width() + avector.width() - intersect
+            return float(intersect)/float(den)
+        else:
+            return 0
+
+    def recall(self,avector):
+        intersect=self.intersection(avector)[1]
+        if intersect>0:
+            return float(intersect)/float(avector.total)
+        else:
+            return 0
+
+    def sim(self,avector,measure):
+        if measure =="cosine":
+            return self.cosine(avector)
+        elif measure =="jaccard":
+            return self.jaccard(avector)
+        elif measure =="recall":
+            return self.recall(avector)
+        else:
+            print "Unknown similarity measure ",measure
+            exit(-1)
 
     def reducesaliency(self,saliency,saliencyperpath=False):
         if saliency==0:
@@ -81,9 +152,10 @@ class SimEngine():
     maxorder=1 #maximum order to be used in simiarity calculations
     #paths_to_include=['_dobj','amod','nn','_nn','_nsubj']  #empty to include all
     paths_to_include=[]
-    blacklist=['punct']
+    blacklist=[]
+    matrix_sims=["cosine"]
 
-    def __init__(self,filename_dict,include_function=isAny,pathdelim="?",saliency=0,saliencyperpath=False):
+    def __init__(self,filename_dict,include_function=isAny,pathdelim="\xc2\xbb",saliency=0,saliencyperpath=False):
         self.filenames=filename_dict
         self.vectors={} #dictionaries of vectors
         self.allfeatures={} #dictionary of all features observed for matrix generation
@@ -142,7 +214,7 @@ class SimEngine():
 
         while (len(featurelist)>0):
             f=featurelist.pop()
-            sc=featurelist.pop()
+            sc=float(featurelist.pop())
             forder=getorder(f,delim=self.pathdelim)
 
             if forder>=SimEngine.minorder and forder<=SimEngine.maxorder: #filter features by path length
@@ -171,9 +243,9 @@ class SimEngine():
         print "Completed matrix generation"
         self.madematrix=True
 
-    def allpairs(self,outstream=None):
+    def allpairs(self,outstream=None,simmetric="cosine"):
 
-        if not self.madematrix:
+        if not self.madematrix and simmetric in SimEngine.matrix_sims:
             self.makematrix()
 
         todo=0
@@ -185,9 +257,9 @@ class SimEngine():
         for type in self.vectors.keys():
             for wordA in self.vectors[type].keys():
                 for wordB in self.vectors[type].keys():
-                    sim=self.vectors[type][wordA].cosine(self.vectors[type][wordB])
+                    sim=self.vectors[type][wordA].sim(self.vectors[type][wordB],measure=simmetric)
                     if outstream==None:
-                        print "cosine(%s,%s) = %s [%s]"%(wordA,wordB,str(sim),type)
+                        print "%s(%s,%s) = %s [%s]"%(simmetric,wordA,wordB,str(sim),type)
                     else:
                         outstream.write("%s\t%s\t%s\t%s\n"%(type,wordA,wordB,str(sim)))
                     done+=1
@@ -196,33 +268,36 @@ class SimEngine():
                         print "Completed %s calculations = %s percent"%(str(done),str(percentage))
 
 
-    def pointwise(self,outstream=None):
+    def pointwise(self,outstream=None,simmetric="cosine"):
 
-        if not self.madematrix:
+        if not self.madematrix and simmetric in SimEngine.matrix_sims:
             self.makematrix()
 
         todo=0
         for typeA in self.vectors.keys():
-            todo+=len(self.vectors[typeA].keys())*2
+            todo+=len(self.vectors[typeA].keys())
 
         done=0
         for typeA in self.vectors.keys():
             for typeB in self.vectors.keys():
-                for wordA in self.vectors[typeA].keys():
-                    vectorB=self.vectors[typeB].get(wordA,None)
-                    if vectorB==None:
-                        sim=0.0
-                    else:
-                        sim = self.vectors[typeA][wordA].cosine(vectorB)
-                    if outstream==None:
-                        print "cosine(%s_[%s],%s_[%s]) = %s"%(wordA,typeA,wordA,typeB,str(sim))
-                    else:
-                        outstream.write("%s\t%s\t%s\t%s\n"%(wordA,typeA,typeB,str(sim)))
+                if typeA !=typeB:
+                    for wordA in self.vectors[typeA].keys():
+                        vectorB=self.vectors[typeB].get(wordA,None)
+                        if vectorB==None:
+                            sim=0.0
+                        else:
+                            sim = self.vectors[typeA][wordA].sim(vectorB,measure=simmetric)
+                        if outstream==None:
+                            print "%s(%s_[%s],%s_[%s]) = %s"%(simmetric,wordA,typeA,wordA,typeB,str(sim))
+                        else:
+                            outstream.write("%s\t%s\t%s\t%s\n"%(wordA,typeA,typeB,str(sim)))
 
-                    done+=1
-                    if (done%10000)==0:
-                        percentage=done*100.0/todo
-                        print "Completed %s calculations = %s percent"%(str(done),str(percentage))
+                        done+=1
+                        if (done%10000)==0:
+                            percentage=done*100.0/todo
+                            print "Completed %s calculations = %s percent"%(str(done),str(percentage))
+
+
 
 if __name__=="__main__":
 
@@ -234,6 +309,8 @@ if __name__=="__main__":
     mySimEngine=SimEngine(filename_dict)
 
     outfilename="testout"
+    outfilename=""
+    measure="recall"
 
     if outfilename!="":
         outstream=open(outfilename,"w")
@@ -241,9 +318,9 @@ if __name__=="__main__":
         outstream=None
 
     if len(filename_dict.keys())==1:
-        mySimEngine.allpairs(outstream)
+        mySimEngine.allpairs(outstream,simmetric=measure)
     else:
-        mySimEngine.pointwise(outstream)
+        mySimEngine.pointwise(outstream,simmetric=measure)
 
 
     if outstream!=None:

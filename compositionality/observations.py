@@ -318,13 +318,16 @@ class CompoundFinder(Compounder):
         sentence[str(sid)]=self.erased
         #print "Converting compounds: ",cmpd,sid
         #print sentence.keys()
-        for index in sentence.keys():
-            if len(sentence[index])==self.arclength:
+
+        #DON"T PICK UP DEPENDENCIES OF DEPENDENCY
+        #for index in sentence.keys():
+        #    if len(sentence[index])==self.arclength:
 
                 #print index,sentence[index]
-                if sentence[index][self.headpos]==str(sid):
+         #       if sentence[index][self.headpos]==str(sid):
             #      print "Found dependency on dependency"
-                   sentence[index][self.headpos]=str(sid+1)
+            #   DO NOT WANT TO CONSIDER THIS as dependency of head
+         #          sentence[index][self.headpos]=str(sid+1)
         #print "Complete"
 
         return sentence
