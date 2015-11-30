@@ -65,7 +65,6 @@ def getorder(feature,delim="\xc2\xbb"):
 
         fields=path.split(delim)
         order=len(fields)
-    print path,delim,order
     return order
 
 def convert(feature,delims=[]):
