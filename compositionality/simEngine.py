@@ -104,12 +104,25 @@ class WordVector:
         else:
             return 0
 
-    def recall(self,avector):
+    def precision(self,avector):
         intersect=self.intersection(avector)[1]
         if intersect>0:
             return float(intersect)/float(avector.total)
         else:
             return 0
+
+    def recall(self,avector):
+        return avector.recall(self)
+
+    def harmonicmean(self,avector):
+        p=self.precision(avector)
+        r=self.recall(avector)
+        return 2*p*r/(p+r)
+
+    def arithmeticmean(self,avector,beta=0.5):
+        p=self.precision(avector)
+        r=self.recall(avector)
+        return beta*p+(1-beta)*r
 
     def sim(self,avector,measure):
         if measure =="cosine":
@@ -118,6 +131,12 @@ class WordVector:
             return self.jaccard(avector)
         elif measure =="recall":
             return self.recall(avector)
+        elif measure=="precision":
+            return self.precision(avector)
+        elif measure=="harmonicmean":
+            return self.harmonicmean(avector)
+        elif measure=="arithmeticmean":
+            return self.arithmeticmean(avector)
         else:
             print "Unknown similarity measure ",measure
             exit(-1)

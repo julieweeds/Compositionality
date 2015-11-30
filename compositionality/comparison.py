@@ -20,6 +20,10 @@ class Comparator():
             self.parentdir=""
         self.filenames={}
         self.filenames[Comparator.key1]=self.parentdir+self.config.get('default','observedfile')
+        try:
+            self.simmetric=self.config.get('default','simmetric')
+        except:
+            self.simmetric="cosine"
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
             #self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
@@ -186,7 +190,7 @@ class Comparator():
                     self.composer.run(parampair=(key,value))  #run composer to create composed vectors
                     self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
                     with open("testout","w") as outstream:
-                        self.mySimEngine.pointwise(outstream)
+                        self.mySimEngine.pointwise(outstream,simmetric=self.simmetric)
 
                     #self.calcInternalSims()
                     with open("testout",'r') as instream:
