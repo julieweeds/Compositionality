@@ -66,7 +66,7 @@ class WordVector:
 
 
     def profile(self,minorder=0,maxorder=10):
-        profile(self.featdict,minorder,maxorder)
+        profile(self.features,minorder,maxorder)
 
     def cosine(self,avector):
 
@@ -92,7 +92,7 @@ class WordVector:
                 theset[feat]=iweight
             else:
                 diff[feat]=self.features[feat]
-        #profile(theset)
+        profile(theset)
         #profile(diff)
         return intersect,weight
 
@@ -112,7 +112,7 @@ class WordVector:
             return 0
 
     def recall(self,avector):
-        return avector.recall(self)
+        return avector.precision(self)
 
     def harmonicmean(self,avector):
         p=self.precision(avector)
@@ -329,7 +329,7 @@ if __name__=="__main__":
 
     outfilename="testout"
     outfilename=""
-    measure="recall"
+    measure="jaccard"
 
     if outfilename!="":
         outstream=open(outfilename,"w")
