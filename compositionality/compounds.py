@@ -216,6 +216,9 @@ class Compound:
 
 class Compounder:
 
+
+    seeds=[5,17,23,37,43,51,61,71,83,91,103,117,123,131,143,157,161,173,181,197,203,213,221,233,247,251,267,271,281,293,301,317,329,331,347,351,361,371,387,397,401,413,421,433,447,451,463,473,481,497]
+
     def __init__(self,filename):
         self.configfile=filename
         #with open(self.configfile) as fp:
@@ -234,7 +237,6 @@ class Compounder:
 
         except:
             print "Error: problem with configuration"
-        random.seed(17)
 
     def readcompounds(self):
         if self.ctype=="reddy":
@@ -374,7 +376,9 @@ class Compounder:
         #if graphing_loaded:
         #    graphing.makescatter(listX,listA)
 
-    def crossvalidate(self,folds,p=""):
+    def crossvalidate(self,folds,p="",rep=0):
+
+        self.setup_folds(folds,rep)
         matrix=[]
         for i in range(0,folds):
 
@@ -391,15 +395,17 @@ class Compounder:
                     TrainY.append(compound.getSimScore())
             trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
             testingR=stats.spearmanr(np.array(TestX),np.array(TestY))
-            print p,i,trainingR[0],testingR[0]
-            line=[p,i,trainingR[0],testingR[0]]
+            myfold=rep*folds+i
+            #print p,myfold,trainingR[0],testingR[0]
+            line=[p,myfold,trainingR[0],testingR[0]]
             matrix.append(line)
         return matrix
 
 
 
-    def setup_folds(self,folds):
+    def setup_folds(self,folds,rep=0):
         #assign each compound to a random fold bin
+        random.seed(Compounder.seeds[rep])
         keys=self.compounds.keys()
         random.shuffle(keys)
         for i,key in enumerate(keys):

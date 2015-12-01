@@ -29,9 +29,10 @@ class Comparator():
             #self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
             self.compounder.readcompounds()
             self.loadFreqs(self.rels,outfile=self.testcompoundfile)
-            print self.compounder.generated_compounds
-            if self.crossvalidate:
-                self.compounder.setup_folds(self.nfolds)
+            print len(self.compounder.generated_compounds),self.compounder.generated_compounds
+            #if self.crossvalidate:
+            #    self.compounder.setup_folds(self.nfolds)
+            # do this later
         print "Revectorising observed phrasal vectors"
         self.revectorise_observed(configfile,self.compounder.generated_compounds)
         print "Reloading observed phrasal vectors"
@@ -67,6 +68,10 @@ class Comparator():
             self.crossvalidate=True
             self.paramdict={}
             self.paramdict["offsetting"]=trialp
+            try:
+                self.repetitions=int(self.config.get('default','repetitions'))
+            except:
+                self.repetitions=1
         except:
             self.nfolds=0
             self.paramdict={}
@@ -80,7 +85,8 @@ class Comparator():
 
 
         if self.crossvalidate:
-            print "Cross-valiation: number of folds = "+str(self.nfolds)
+            print "Cross-validation: number of folds = "+str(self.nfolds)
+            print "Number of repetitions = "+str(self.repetitions)
             print self.paramdict
         else:
             print "No cross-validation"
@@ -153,8 +159,12 @@ class Comparator():
 
         self.compounder.correlate(show_graph=(not self.crossvalidate))
         if self.crossvalidate:
-            return self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]))
-
+            reps=self.repetitions
+            m=[]
+            while reps>0:
+                reps=reps-1
+                m+=self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]),rep=reps)
+            return m
         else:
             return []
 
@@ -166,7 +176,8 @@ class Comparator():
         #analyse training performance
         #for each fold find best parameter
         #for that fold and parameter collect test performance
-        for i in range(0,self.nfolds):
+        folds = self.nfolds*self.repetitions
+        for i in range(0,folds):
             maxtraining=0
             maxindex=-1
             for index,line in enumerate(cv_matrix):
@@ -178,8 +189,8 @@ class Comparator():
             testps.append(cv_matrix[maxindex][0])
 
         perf=np.mean(testrs)
-        error=np.std(testrs)/math.sqrt(self.nfolds)
-        print "Cross-validated performance",str(perf),str(error)
+        error=np.std(testrs)/math.sqrt(folds)
+        print "Cross-validated performance over %s repetitions is %s with error %s"%(str(len(testrs)),str(perf),str(error))
         print "Chosen parameter settings: ",testps
 
     def run(self):

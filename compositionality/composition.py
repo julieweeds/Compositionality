@@ -799,33 +799,37 @@ class Composition:
     #write a set of vectors to file
     #these could be raw or PPMI vectors
     #----
-    def output(self,vectors,outfile):
+    def output(self,vectors,outfile,append=False):
         #write a set of vectors to file
         print "Writing vectors to output file: "+outfile
-        with open(outfile,"w") as outstream:
-            for entry in vectors.keys():
-                vector=vectors[entry]
-                #print entry
-                #print vector
-                if len(vector.keys())>0:
-                    outstring=entry
-                    ignored=0
-                    nofeats=0
-                    for feat in vector.keys():
-                        #print feat
-                        forder=self.getorder(feat)
+        if append:
+            outstream=open(outfile,"a")
+        else:
+            outstream=open(outfile,"w")
+        for entry in vectors.keys():
+            vector=vectors[entry]
+            #print entry
+            #print vector
+            if len(vector.keys())>0:
+                outstring=entry
+                ignored=0
+                nofeats=0
+                for feat in vector.keys():
+                    #print feat
+                    forder=self.getorder(feat)
 
-                        if forder>=self.minorder and forder<=self.maxorder:
+                    if forder>=self.minorder and forder<=self.maxorder:
 
-                            try:
-                                outstring+="\t"+feat+"\t"+str(vector[feat])
-                                nofeats+=1
-                            except:
-                                ignored+=1
-                    #print "Ignored "+str(ignored)+" features"
-                    if nofeats>0:
-                        outstream.write(outstring+"\n")
+                        try:
+                            outstring+="\t"+feat+"\t"+str(vector[feat])
+                            nofeats+=1
+                        except:
+                            ignored+=1
+                #print "Ignored "+str(ignored)+" features"
+                if nofeats>0:
+                    outstream.write(outstring+"\n")
 
+        outstream.close()
 
 
 
@@ -1064,7 +1068,7 @@ class Composition:
     #COMPOSE
     #load appropriate vectors, display most salient features for each vector, then runANcomposition and output to file
     #----
-    def compose(self,parampair=('','')):
+    def getComposedFilename(self):
 
         if self.normalised:
             suffix=".norm"
@@ -1085,9 +1089,14 @@ class Composition:
                 suffix+=".spp_"+str(self.saliency)
             else:
                 suffix+=".sal_"+str(self.saliency)
-        self.outfile=self.selectpos()+self.reducedstring+".composed"+suffix
 
+        outfile=self.selectpos()+self.reducedstring+".composed"+suffix
 
+        return outfile
+
+    def compose(self,parampair=('','')):
+
+        self.outfile=self.getComposedFilename()
 
         for pos in ["N","J","V"]:
             self.pos=pos
