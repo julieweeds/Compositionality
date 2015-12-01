@@ -23,7 +23,7 @@ def profile(featdict,minorder=0,maxorder=10):
                 thisorderweight+=weight
             totalweight+=weight
 
-        print "total weight of features",totalweight
+        #print "total weight of features",totalweight
         print "total weight of required order features",thisorderweight
         profile=sorted(paths.items(),key=itemgetter(1),reverse=True)
 
@@ -81,20 +81,26 @@ class WordVector:
 
     def intersection(self,avector):
         intersect=0
-        weight=0
-        theset={}
+        rtot=0
+        ptot=0
+        pset={}
+        rset={}
         diff={}
         for feat in self.features.keys():
             if feat in avector.features.keys():
                 intersect+=1
-                iweight=avector.features[feat]
-                weight+=iweight
-                theset[feat]=iweight
+                pweight=avector.features[feat]
+                rweight=self.features[feat]
+                ptot+=pweight
+                rtot+=rweight
+                pset[feat]=pweight
+                rset[feat]=rweight
             else:
                 diff[feat]=self.features[feat]
-        profile(theset)
-        #profile(diff)
-        return intersect,weight
+        #profile(pset)
+        profile(rset)
+        profile(diff)
+        return intersect,ptot,rtot
 
     def jaccard(self,avector):
         intersect= self.intersection(avector)[0]
@@ -104,15 +110,22 @@ class WordVector:
         else:
             return 0
 
-    def precision(self,avector):
+    def precision(self,avector): #precision in predicting self by avector
         intersect=self.intersection(avector)[1]
         if intersect>0:
+            #profile(avector.features)
             return float(intersect)/float(avector.total)
         else:
             return 0
 
-    def recall(self,avector):
-        return avector.precision(self)
+    def recall(self,avector): #recall of self by avector
+
+        intersect=self.intersection(avector)[2]
+        if intersect>0:
+            #profile(self.features)
+            return float(intersect)/float(self.total)
+        else:
+            return 0
 
     def harmonicmean(self,avector):
         p=self.precision(avector)
@@ -329,7 +342,7 @@ if __name__=="__main__":
 
     outfilename="testout"
     outfilename=""
-    measure="jaccard"
+    measure="recall"
 
     if outfilename!="":
         outstream=open(outfilename,"w")

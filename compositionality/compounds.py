@@ -328,12 +328,16 @@ class Compounder:
         phrase,type = matchmake(compound.split('/')[0])
         if phrase in self.compounds.keys():
             self.compounds[phrase].setFreq(freq)
+            return True
         else:
             #print "attempting lemma match for", phrase,type
             for compound in self.compounds.values():
                 if compound.lemmamatch(phrase,type):
                     #print "Lemma match for ",phrase, type
                     compound.setFreq(freq)
+                    return True
+
+        return False
 
     def correlate(self, show_graph=True):
         listX=[]

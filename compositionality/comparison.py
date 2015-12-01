@@ -124,9 +124,9 @@ class Comparator():
                         posparts=parts[2].split('/')
                         if len(posparts)==2:
 
-                            self.compounder.addFreq(fields[0],float(fields[1]))
-                            self.compounder.generated_compounds.append(fields[0])
-                            outstream.write(fields[0]+"\n")
+                            if self.compounder.addFreq(fields[0],float(fields[1])):
+                                self.compounder.generated_compounds.append(fields[0])
+                                outstream.write(fields[0]+"\n")
 
 
 

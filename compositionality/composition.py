@@ -1196,6 +1196,8 @@ class Composition:
             return self.addCompound(offsetvector,headvector,hp)
         elif op=="min":
             return self.minCompound(offsetvector,headvector)
+        elif op=="smooth_mult":
+            return self.smooth_multCompound(offsetvector,headvector)
         else:
             print "Error unknown composition operation: "+op
             exit(-1)
@@ -1240,6 +1242,26 @@ class Composition:
 
         print "Intersecting features: "+str(len(intersect))
         return COMPOUNDvector
+
+    def smooth_multCompound(self,offsetvector,headvector):
+
+        COMPOUNDvector={}
+        intersect=[]
+        for count,feature in enumerate(headvector.keys()):
+            if feature in offsetvector:
+                COMPOUNDvector[feature]=(float(headvector[feature])+1)*(float(offsetvector[feature])+1)
+                intersect.append(feature)
+                offsetvector.__delitem__(feature)
+            else:
+                COMPOUNDvector[feature]=float(headvector[feature])+1
+
+        for feature in offsetvector.keys():
+            COMPOUNDvector[feature]=float(offsetvector[feature])+1
+
+        print "Intersecting features: "+str(len(intersect))
+
+        return COMPOUNDvector
+
 
     def addAN(self,adjvector,nounvector):
         return self.doCompound(adjvector,nounvector,"mod")
