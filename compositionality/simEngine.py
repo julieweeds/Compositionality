@@ -98,6 +98,7 @@ class WordVector:
             else:
                 diff[feat]=self.features[feat]
         #profile(pset)
+        print "Profiling intersection for ",self.name,avector.name
         profile(rset)
         profile(diff)
         return intersect,ptot,rtot
@@ -130,7 +131,10 @@ class WordVector:
     def harmonicmean(self,avector):
         p=self.precision(avector)
         r=self.recall(avector)
-        return 2*p*r/(p+r)
+        if p+r>0:
+            return 2*p*r/(p+r)
+        else:
+            return 0
 
     def arithmeticmean(self,avector,beta=0.5):
         p=self.precision(avector)
@@ -227,6 +231,7 @@ class SimEngine():
         self.filenames[key]=filename
         self.vectors[key]={}
         self.load(key)
+
         self.madematrix=False  #matrix must be remade
 
     def include(self,token):
@@ -257,23 +262,27 @@ class SimEngine():
         self.vectors[type][token].reducesaliency(self.saliency,saliencyperpath=self.saliencyperpath)
 
     def makematrix(self):
+        self.setup_matrix()
 
+        for type in self.vectors.keys():
+            for wordvector in self.vectors[type].values():
+                wordvector.makearray(self.fk_idx)
+        print "Completed matrix generation"
+
+
+    def setup_matrix(self):
         print "Converting to matrix form"
         fkeys=self.allfeatures.keys()
         fkeys.sort()  #don't actually need to sort - but makes the indexing more predictable
         for i in range(len(fkeys)):
             self.fk_idx[fkeys[i]]=i
 
-        #del self.allfeatures #can now delete this dictionary if memory is an issue
+        del self.allfeatures #can now delete this dictionary if memory is an issue
 
         dim=len(self.fk_idx)
+        self.madematrix=True
         print "Dimensionality is " + str(dim)
 
-        for type in self.vectors.keys():
-            for wordvector in self.vectors[type].values():
-                wordvector.makearray(self.fk_idx)
-        print "Completed matrix generation"
-        self.madematrix=True
 
     def allpairs(self,outstream=None,simmetric="cosine"):
 
@@ -303,7 +312,7 @@ class SimEngine():
     def pointwise(self,outstream=None,simmetric="cosine"):
 
         if not self.madematrix and simmetric in SimEngine.matrix_sims:
-            self.makematrix()
+            self.setup_matrix()
 
         todo=0
         for typeA in self.vectors.keys():
@@ -318,7 +327,13 @@ class SimEngine():
                         if vectorB==None:
                             sim=0.0
                         else:
-                            sim = self.vectors[typeA][wordA].sim(vectorB,measure=simmetric)
+                            vectorA=self.vectors[typeA][wordA]
+                            if simmetric in SimEngine.matrix_sims:
+                                vectorA.makearray(self.fk_idx)
+                                vectorB.makearray(self.fk_idx)
+                            sim = vectorA.sim(vectorB,measure=simmetric)
+                            vectorA.array = None
+                            vectorB.array = None
                         if outstream==None:
                             print "%s(%s_[%s],%s_[%s]) = %s"%(simmetric,wordA,typeA,wordA,typeB,str(sim))
                         else:

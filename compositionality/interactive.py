@@ -1,6 +1,7 @@
 
 from operator import itemgetter
 from composition import getorder, getpathtype, getpathvalue
+import sys
 
 class Vector:
 
@@ -40,12 +41,31 @@ class Vector:
 
         print profile
 
-    def suffix(self,path):
+    def view(self,minorder=0,maxorder=10,cutoff=100):
+        features={}
+        for feat in self.features.keys():
+            order = getorder(feat)
+            if order>=minorder and order<=maxorder:
+                features[feat]=self.features[feat]
+
+        aview=sorted(features.items(),key=itemgetter(1),reverse=True)
+        line=""
+        for i,pair in enumerate(aview[:cutoff-1]):
+            if i%5==4:
+                line += pair[0]+" "+str(pair[1])
+                print line
+                line=""
+            else:
+                line += pair[0]+" "+str(pair[1])+"\t"
+
+
+    def showsuffix(self,path,minorder=1,maxorder=1):
 
         feats={}
         for feat in self.features.keys():
             thispath = getpathtype(feat)
-            if thispath.endswith(path):
+            order = getorder(feat)
+            if thispath.endswith(path) and order >=minorder and order <=maxorder:
                 feats[feat]=self.features[feat]
 
         values = sorted(feats.items(),key=itemgetter(1),reverse=True)
@@ -55,19 +75,21 @@ class Vector:
 
 class Viewer:
 
-    def __init__(self):
-        self.configure()
+    def __init__(self,fileoption="filtered"):
+        self.configure(fileoption)
         self.vectors={}
 
-    def configure(self):
+    def configure(self,fileoption="filtered"):
         self.parentdir="/home/j/ju/juliewe/Documents/workspace/SentenceCompletionChallenge/data/apt/"
-        self.filename="wiki_rbt/wiki_rbt_reddy_lemma_2.tsv"
-        self.reducestring="reduce_0_2.filtered.norm"
+        self.filename="wiki_rbt/wiki_rbt_lemma_reddy_2.tsv"
+        self.reducestring="reduce_0_2."
+        self.fileoption=fileoption
+        self.suffix=".norm.smooth_ppmi"
         self.filesByPos={"N":"nouns","J":"adjs","V":"verbs","R":"advs","F":"other"}
 
     def loadvectors(self,pos,alist):
 
-        infile=self.parentdir+self.filename+"."+self.filesByPos[pos]+"."+self.reducestring
+        infile=self.parentdir+self.filename+"."+self.filesByPos[pos]+"."+self.reducestring+self.fileoption+self.suffix
 
         found=0
         with open(infile) as instream:
@@ -109,15 +131,24 @@ class Viewer:
         else:
             return "Error: not found vector"
 
-    def suffix(self,entry,path):
+    def view(self,entry,minorder=0,maxorder=10):
         if self.load(entry):
-            self.vectors[entry].suffix(path)
+            self.vectors[entry].view(minorder=minorder,maxorder=maxorder)
+        else:
+            return "Error: not found vector"
+
+    def showsuffix(self,entry,path,minorder=1,maxorder=1):
+        if self.load(entry):
+            self.vectors[entry].showsuffix(path,minorder=minorder,maxorder=maxorder)
         else:
             return "Error: not found vector"
 
 if __name__=="__main__":
     cont=True
-    myviewer=Viewer()
+    if len(sys.argv)>1:
+        myviewer=Viewer(sys.argv[1])
+    else:
+        myviewer=Viewer()
     while cont==True:
         query=raw_input("Enter query: ")
         if query=="quit":
@@ -135,7 +166,24 @@ if __name__=="__main__":
                     myviewer.profile(parts[1],min,max)
                 else:
                     myviewer.profile(parts[1])
-
             elif parts[0]=="suffix":
-                myviewer.suffix(parts[1],parts[2])
+                if len(parts)>=4:
+                    min = int(parts[3])
+                    max=int(parts[4])
+                    myviewer.showsuffix(parts[1],parts[2],min,max)
+                else:
+                    myviewer.showsuffix(parts[1],parts[2])
+
+            elif parts[0]=="view":
+                if len(parts)>=4:
+                    min=int(parts[2])
+                    max=int(parts[3])
+
+                    if len(parts)>=5:
+                        cutoff=int(parts[4])
+                        myviewer.view(parts[1],min,max,cutoff)
+                    else:
+                        myviewer.view(parts[1],min,max)
+                else:
+                    myviewer.view(parts[1])
 

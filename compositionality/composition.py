@@ -1068,7 +1068,7 @@ class Composition:
     #COMPOSE
     #load appropriate vectors, display most salient features for each vector, then runANcomposition and output to file
     #----
-    def getComposedFilename(self):
+    def getComposedFilename(self,parampair):
 
         if self.normalised:
             suffix=".norm"
@@ -1090,13 +1090,14 @@ class Composition:
             else:
                 suffix+=".sal_"+str(self.saliency)
 
-        outfile=self.selectpos()+self.reducedstring+".composed"+suffix
+        key=str(parampair[0])+"-"+str(parampair[1])
+        outfile=self.selectpos()+self.reducedstring+".composed_"+key+suffix
 
         return outfile
 
     def compose(self,parampair=('','')):
 
-        self.outfile=self.getComposedFilename()
+        self.outfile=self.getComposedFilename(parampair)
 
         for pos in ["N","J","V"]:
             self.pos=pos
@@ -1422,6 +1423,18 @@ class Composition:
             else:
                 print "Unknown option: "+self.option
 
+    def close(self):
+        #release memory by deleting stored vectors
+        del self.vecsbypos
+        del self.totsbypos
+        del self.feattotsbypos
+        del self.pathtotsbypos
+        del self.typetotsbypos
+        del self.ANfeattots
+        del self.ANpathtots
+        del self.ANtots
+        del self.ANvecs
+        del self.ANtypetots
 
 
 if __name__=="__main__":

@@ -107,6 +107,7 @@ class NounCompounder(Composition):
     right=Composition.headPoS
     basicRel=Composition.basicRel
     rels_to_include=[]
+    chunksize=100
 
     def set_words(self):
         self.words=self.myCompounder.wordsByPos[self.pos]
@@ -119,7 +120,7 @@ class NounCompounder(Composition):
 
     def compose(self,parampair=('','')):
 
-        self.outfile=self.getComposedFilename()
+        self.outfile=self.getComposedFilename(parampair)
 
         for pos in ["N","J","V"]:
             self.pos=pos
@@ -134,13 +135,11 @@ class NounCompounder(Composition):
         append=False
         for rel in self.myCompounder.relindex.keys():
             if self.includeRel(rel):
-                self.runANcompositionByRel(rel,parampair=parampair)
-
-            self.output(self.runANcomposition(parampair=parampair),self.outfile,append=append)
-            append=True
+                append=self.runANcompositionByRel(rel,self.outfile, parampair=parampair,append=append)
 
 
-    def runANcompositionByRel(self,rel,parampair=('','')):
+
+    def runANcompositionByRel(self,rel,outfile,parampair=('',''),append=False):
         myvectors={}
         if parampair[0]=="offsetting":
             offsetting=float(parampair[1])
@@ -156,18 +155,32 @@ class NounCompounder(Composition):
         self.ANtots={}
         self.ANpathtots={}
 
+        thischunk=0
         for compound in self.myCompounder.relindex[rel]:
             #should check not lower case for pos
             try:
                 #print "Composing: "+compound.text
                 self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
-
+                thischunk+=1
             except KeyError:
                 pass
                 #print "Warning: 1 or more vectors not present for "+compound.text
 
-        myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
-        return myvectors
+            if thischunk>=NounCompounder.chunksize:
+                myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
+                self.output(myvectors,outfile,append)
+                self.ANvecs={}
+                self.ANtots={}
+                self.ANpathtots={}
+                myvectors={}
+                thischunk=0
+                append=True
+
+        myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots))
+        self.output(myvectors,outfile,append)
+        return True
+
+
 
     def getLeftIndex(self):
         return self.myCompounder.leftindex.keys()

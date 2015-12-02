@@ -33,13 +33,21 @@ class Comparator():
             #if self.crossvalidate:
             #    self.compounder.setup_folds(self.nfolds)
             # do this later
-        print "Revectorising observed phrasal vectors"
-        self.revectorise_observed(configfile,self.compounder.generated_compounds)
+
+        if 'revectorise' not in self.skip:
+            print "Revectorising observed phrasal vectors"
+            self.revectorise_observed(configfile,self.compounder.generated_compounds)
         print "Reloading observed phrasal vectors"
         self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
     def setup_compounds_exp(self,configfile):
+
+        try:
+            self.skip=ast.literal_eval(self.config.get('default','skip'))
+        except:
+            self.skip=[]
         self.compounder=compounds.Compounder(configfile)
+
         self.composer = nouncompounds.NounCompounder(["config",configfile])
         self.rels=ast.literal_eval(self.config.get('default','rels'))
         self.testcompoundfile=self.config.get('compounder','compound_file')
@@ -198,17 +206,26 @@ class Comparator():
             cv_matrix=[]
             for key in self.paramdict.keys():
                 for value in self.paramdict[key]:
-                    self.composer.run(parampair=(key,value))  #run composer to create composed vectors
-                    self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
-                    with open("testout","w") as outstream:
-                        self.mySimEngine.pointwise(outstream,simmetric=self.simmetric)
+                    if 'compose' not in self.skip:
+                        self.composer.run(parampair=(key,value))  #run composer to create composed vectors
+                        self.composer.close()
+                    else:
+                        self.composer.outfile=self.composer.getComposedFilename(parampair=(key,value))
+
+                    simfile=self.composer.outfile+".sims"
+
+                    if 'sim' not in self.skip:
+                        self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
+                        with open(simfile,"w") as outstream:
+                            self.mySimEngine.pointwise(outstream,simmetric=self.simmetric)
 
                     #self.calcInternalSims()
-                    with open("testout",'r') as instream:
-                        m=self.correlate(instream,parampair=(key,value))
-                    if len(m)>0:
-                        for line in m:
-                            cv_matrix.append(line)
+                    if 'correlate' not in self.skip:
+                        with open(simfile,'r') as instream:
+                            m=self.correlate(instream,parampair=(key,value))
+                        if len(m)>0:
+                            for line in m:
+                                cv_matrix.append(line)
 
 
             if len(cv_matrix)>0:
