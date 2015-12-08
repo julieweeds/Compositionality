@@ -112,7 +112,7 @@ class CompoundFinder(Compounder):
                     else:
                         self.process_sentence(sentencebuffer)
                     sentencebuffer={}
-            lines+=1
+            self.lines+=1
             if lines%1000000==0:
                 print "Processed "+str(self.lines)+" lines"
                 print "Found "+str(self.non_zero())+" out of "+str(len(self.counts.keys()))+" compounds"

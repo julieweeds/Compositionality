@@ -20,21 +20,35 @@ class Comparator():
             self.parentdir=""
         self.filenames={}
         self.filenames[Comparator.key1]=self.parentdir+self.config.get('default','observedfile')
+        try:
+            self.simmetric=self.config.get('default','simmetric')
+        except:
+            self.simmetric="cosine"
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
-            #self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
-            self.compounder.readcompounds()
-            self.loadFreqs(self.rels,outfile=self.testcompoundfile)
-            print self.compounder.generated_compounds
-            if self.crossvalidate:
-                self.compounder.setup_folds(self.nfolds)
-        print "Revectorising observed phrasal vectors"
-        self.revectorise_observed(configfile,self.compounder.generated_compounds)
-        print "Reloading observed phrasal vectors"
-        self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
+
+            if 'observed' not in self.skip:
+                self.compounder.readcompounds()
+                self.loadFreqs(self.rels,outfile=self.testcompoundfile)
+            else:
+                self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
+            print len(self.compounder.generated_compounds),self.compounder.generated_compounds
+            #if self.crossvalidate:
+            #    self.compounder.setup_folds(self.nfolds)
+            # do this later
+
+        if 'revectorise' not in self.skip:
+            print "Revectorising observed phrasal vectors"
+            self.revectorise_observed(configfile,self.compounder.generated_compounds)
 
     def setup_compounds_exp(self,configfile):
+
+        try:
+            self.skip=ast.literal_eval(self.config.get('default','skip'))
+        except:
+            self.skip=[]
         self.compounder=compounds.Compounder(configfile)
+
         self.composer = nouncompounds.NounCompounder(["config",configfile])
         self.rels=ast.literal_eval(self.config.get('default','rels'))
         self.testcompoundfile=self.config.get('compounder','compound_file')
@@ -63,6 +77,10 @@ class Comparator():
             self.crossvalidate=True
             self.paramdict={}
             self.paramdict["offsetting"]=trialp
+            try:
+                self.repetitions=int(self.config.get('default','repetitions'))
+            except:
+                self.repetitions=1
         except:
             self.nfolds=0
             self.paramdict={}
@@ -76,7 +94,8 @@ class Comparator():
 
 
         if self.crossvalidate:
-            print "Cross-valiation: number of folds = "+str(self.nfolds)
+            print "Cross-validation: number of folds = "+str(self.nfolds)
+            print "Number of repetitions = "+str(self.repetitions)
             print self.paramdict
         else:
             print "No cross-validation"
@@ -120,9 +139,9 @@ class Comparator():
                         posparts=parts[2].split('/')
                         if len(posparts)==2:
 
-                            self.compounder.addFreq(fields[0],float(fields[1]))
-                            self.compounder.generated_compounds.append(fields[0])
-                            outstream.write(fields[0]+"\n")
+                            if self.compounder.addFreq(fields[0],float(fields[1])):
+                                self.compounder.generated_compounds.append(fields[0])
+                                outstream.write(fields[0]+"\n")
 
 
 
@@ -149,33 +168,38 @@ class Comparator():
 
         self.compounder.correlate(show_graph=(not self.crossvalidate))
         if self.crossvalidate:
-            return self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]))
-
+            reps=self.repetitions
+            m=[]
+            while reps>0:
+                reps=reps-1
+                m+=self.compounder.crossvalidate(self.nfolds,p=str(parampair[0])+":"+str(parampair[1]),rep=reps)
+            return m
         else:
             return []
 
     def analyse(self,cv_matrix):
-        print cv_matrix
+        #print cv_matrix
 
         testrs=[]
         testps=[]
         #analyse training performance
         #for each fold find best parameter
         #for that fold and parameter collect test performance
-        for i in range(0,self.nfolds):
-            maxtraining=0
-            maxindex=-1
+        folds = self.nfolds*self.repetitions
+        for i in range(0,folds):
+            besttraining=1
+            bestindex=-1
             for index,line in enumerate(cv_matrix):
                 if line[1]==i:
-                    if line[2]>maxtraining:
-                        maxtraining=line[2]
-                        maxindex=index
-            testrs.append(cv_matrix[maxindex][3])
-            testps.append(cv_matrix[maxindex][0])
+                    if line[2]<besttraining:
+                        besttraining=line[2]
+                        bestindex=index
+            testrs.append(cv_matrix[bestindex][3])
+            testps.append(cv_matrix[bestindex][0])
 
         perf=np.mean(testrs)
-        error=np.std(testrs)/math.sqrt(self.nfolds)
-        print "Cross-validated performance",str(perf),str(error)
+        error=np.std(testrs)/math.sqrt(folds)
+        print "Cross-validated performance over %s repetitions is %s with error %s"%(str(len(testrs)),str(perf),str(error))
         print "Chosen parameter settings: ",testps
 
     def run(self):
@@ -183,23 +207,37 @@ class Comparator():
             cv_matrix=[]
             for key in self.paramdict.keys():
                 for value in self.paramdict[key]:
-                    self.composer.run(parampair=(key,value))  #run composer to create composed vectors
-                    self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
-                    with open("testout","w") as outstream:
-                        self.mySimEngine.pointwise(outstream)
+                    if 'compose' not in self.skip:
+                        self.composer.run(parampair=(key,value))  #run composer to create composed vectors
+                        self.composer.close()
+                    else:
+                        self.composer.outfile=self.composer.getComposedFilename(parampair=(key,value))
+
+                    simfile=self.composer.outfile+".sims"
+
+                    if 'sim' not in self.skip:
+                        print "Reloading observed phrasal vectors"
+                        self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
+
+                        self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
+                        with open(simfile,"w") as outstream:
+                            self.mySimEngine.pointwise(outstream,simmetric=self.simmetric)
 
                     #self.calcInternalSims()
-                    with open("testout",'r') as instream:
-                        m=self.correlate(instream,parampair=(key,value))
-                    if len(m)>0:
-                        for line in m:
-                            cv_matrix.append(line)
+                    if 'correlate' not in self.skip:
+                        with open(simfile,'r') as instream:
+                            m=self.correlate(instream,parampair=(key,value))
+                        if len(m)>0:
+                            for line in m:
+                                cv_matrix.append(line)
 
 
             if len(cv_matrix)>0:
                 self.analyse(cv_matrix)
 
         else:
+            print "Reloading observed phrasal vectors"
+            self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
             self.mySimEngine.allpairs()
 
 

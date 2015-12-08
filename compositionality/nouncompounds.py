@@ -107,6 +107,7 @@ class NounCompounder(Composition):
     right=Composition.headPoS
     basicRel=Composition.basicRel
     rels_to_include=[]
+    chunksize=100
 
     def set_words(self):
         self.words=self.myCompounder.wordsByPos[self.pos]
@@ -116,37 +117,73 @@ class NounCompounder(Composition):
     def includeRel(self,rel):
         return NounCompounder.rels_to_include==[] or rel in NounCompounder.rels_to_include
 
+    def getPoSes(self):
 
-    def runANcomposition(self,parampair=('','')):
+        return [pos for pos in self.myCompounder.wordsByPos.keys() if len(self.myCompounder.wordsByPos[pos])>0]
+
+    def compose(self,parampair=('','')):
+
+        self.outfile=self.getComposedFilename(parampair)
+
+        for pos in self.getPoSes():
+            self.pos=pos
+            self.set_words()
+            self.feattotsbypos[pos]=self.load_coltotals(cds=self.smooth_ppmi)
+            self.totsbypos[pos]=self.load_rowtotals()
+            self.vecsbypos[pos]= self.load_vectors()
+            self.pathtotsbypos[pos]=self.compute_nounpathtotals(self.vecsbypos[pos])
+            self.typetotsbypos[pos]=self.compute_typetotals(self.feattotsbypos[pos])
+
+
+        append=False
+        for rel in self.myCompounder.relindex.keys():
+            if self.includeRel(rel):
+                append=self.runANcompositionByRel(rel,self.outfile, parampair=parampair,append=append)
+
+
+
+    def runANcompositionByRel(self,rel,outfile,parampair=('',''),append=False):
         myvectors={}
         if parampair[0]=="offsetting":
             offsetting=float(parampair[1])
         else:
             offsetting=self.offsetting
 
-        for rel in self.myCompounder.relindex.keys():
-            if self.includeRel(rel):
-                print "Composing type totals for "+rel
-                self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
-                print "Composing feature totals for "+rel
-                self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
+        print "Composing type totals for "+rel
+        self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
+        print "Composing feature totals for "+rel
+        self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
 
+        self.ANvecs={}
+        self.ANtots={}
+        self.ANpathtots={}
+
+        thischunk=0
+        for compound in self.myCompounder.relindex[rel]:
+            #should check not lower case for pos
+            try:
+                #print "Composing: "+compound.text
+                self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
+                thischunk+=1
+            except KeyError:
+                pass
+                #print "Warning: 1 or more vectors not present for "+compound.text
+
+            if thischunk>=NounCompounder.chunksize:
+                myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
+                self.output(myvectors,outfile,append)
                 self.ANvecs={}
                 self.ANtots={}
                 self.ANpathtots={}
+                myvectors={}
+                thischunk=0
+                append=True
 
-                for compound in self.myCompounder.relindex[rel]:
-                    #should check not lower case for pos
-                    try:
-                        #print "Composing: "+compound.text
-                        self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
+        myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots))
+        self.output(myvectors,outfile,append)
+        return True
 
-                    except KeyError:
-                        pass
-                        #print "Warning: 1 or more vectors not present for "+compound.text
 
-                myvectors.update(self.mostsalientvecs(self.ANvecs,self.ANpathtots,self.ANfeattots,self.ANtypetots,self.ANtots)) #compute ppmi vectors and store in myvectors
-        return myvectors
 
     def getLeftIndex(self):
         return self.myCompounder.leftindex.keys()

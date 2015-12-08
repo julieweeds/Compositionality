@@ -65,7 +65,6 @@ def getorder(feature,delim="\xc2\xbb"):
 
         fields=path.split(delim)
         order=len(fields)
-
     return order
 
 def convert(feature,delims=[]):
@@ -326,6 +325,11 @@ class Composition:
             self.offsetting=self.config.get('default','offsetting')
         except:
             self.offsetting=Composition.offsetting
+
+        try:
+            self.distinguish=(self.config.get('default','distinguish')=='True')
+        except:
+            self.distinguish=False
 
     #----HELPER FUNCTIONS
 
@@ -800,33 +804,37 @@ class Composition:
     #write a set of vectors to file
     #these could be raw or PPMI vectors
     #----
-    def output(self,vectors,outfile):
+    def output(self,vectors,outfile,append=False):
         #write a set of vectors to file
         print "Writing vectors to output file: "+outfile
-        with open(outfile,"w") as outstream:
-            for entry in vectors.keys():
-                vector=vectors[entry]
-                #print entry
-                #print vector
-                if len(vector.keys())>0:
-                    outstring=entry
-                    ignored=0
-                    nofeats=0
-                    for feat in vector.keys():
-                        #print feat
-                        forder=self.getorder(feat)
+        if append:
+            outstream=open(outfile,"a")
+        else:
+            outstream=open(outfile,"w")
+        for entry in vectors.keys():
+            vector=vectors[entry]
+            #print entry
+            #print vector
+            if len(vector.keys())>0:
+                outstring=entry
+                ignored=0
+                nofeats=0
+                for feat in vector.keys():
+                    #print feat
+                    forder=self.getorder(feat)
 
-                        if forder>=self.minorder and forder<=self.maxorder:
+                    if forder>=self.minorder and forder<=self.maxorder:
 
-                            try:
-                                outstring+="\t"+feat+"\t"+str(vector[feat])
-                                nofeats+=1
-                            except:
-                                ignored+=1
-                    #print "Ignored "+str(ignored)+" features"
-                    if nofeats>0:
-                        outstream.write(outstring+"\n")
+                        try:
+                            outstring+="\t"+feat+"\t"+str(vector[feat])
+                            nofeats+=1
+                        except:
+                            ignored+=1
+                #print "Ignored "+str(ignored)+" features"
+                if nofeats>0:
+                    outstream.write(outstring+"\n")
 
+        outstream.close()
 
 
 
@@ -1065,7 +1073,7 @@ class Composition:
     #COMPOSE
     #load appropriate vectors, display most salient features for each vector, then runANcomposition and output to file
     #----
-    def compose(self,parampair=('','')):
+    def getComposedFilename(self,parampair):
 
         if self.normalised:
             suffix=".norm"
@@ -1086,9 +1094,16 @@ class Composition:
                 suffix+=".spp_"+str(self.saliency)
             else:
                 suffix+=".sal_"+str(self.saliency)
-        self.outfile=self.selectpos()+self.reducedstring+".composed"+suffix
 
+        key=str(parampair[0])+"-"+str(parampair[1])
+        key2="_"+str(self.compop)
+        outfile=self.selectpos()+self.reducedstring+".composed_"+key+key2+suffix
 
+        return outfile
+
+    def compose(self,parampair=('','')):
+
+        self.outfile=self.getComposedFilename(parampair)
 
         for pos in ["N","J","V"]:
             self.pos=pos
@@ -1158,7 +1173,12 @@ class Composition:
         deppathtots=self.pathtotsbypos[dppos][dep]
         deptot=self.totsbypos[dppos][dep]
 
-        entry=dep.split("/")[0]+"|"+rel+"|"+head
+        if self.distinguish:
+            tag="composed:"
+        else:
+            tag=""
+
+        entry=dep.split("/")[0]+"|"+tag+rel+"|"+head
         print "Composing vectors for "+entry
         self.ANvecs[entry]=self.doCompound(depvector,headvector,rel,hp=hp,op=compop,offsetting=offsetting)
         print "Composing path totals"
@@ -1197,6 +1217,8 @@ class Composition:
             return self.addCompound(offsetvector,headvector,hp)
         elif op=="min":
             return self.minCompound(offsetvector,headvector)
+        elif op=="smooth_mult":
+            return self.smooth_multCompound(offsetvector,headvector)
         else:
             print "Error unknown composition operation: "+op
             exit(-1)
@@ -1241,6 +1263,26 @@ class Composition:
 
         print "Intersecting features: "+str(len(intersect))
         return COMPOUNDvector
+
+    def smooth_multCompound(self,offsetvector,headvector):
+
+        COMPOUNDvector={}
+        intersect=[]
+        for count,feature in enumerate(headvector.keys()):
+            if feature in offsetvector:
+                COMPOUNDvector[feature]=(float(headvector[feature])+1)*(float(offsetvector[feature])+1)
+                intersect.append(feature)
+                offsetvector.__delitem__(feature)
+            else:
+                COMPOUNDvector[feature]=float(headvector[feature])+1
+
+        for feature in offsetvector.keys():
+            COMPOUNDvector[feature]=float(offsetvector[feature])+1
+
+        print "Intersecting features: "+str(len(intersect))
+
+        return COMPOUNDvector
+
 
     def addAN(self,adjvector,nounvector):
         return self.doCompound(adjvector,nounvector,"mod")
@@ -1392,6 +1434,18 @@ class Composition:
             else:
                 print "Unknown option: "+self.option
 
+    def close(self):
+        #release memory by deleting stored vectors
+        del self.vecsbypos
+        del self.totsbypos
+        del self.feattotsbypos
+        del self.pathtotsbypos
+        del self.typetotsbypos
+        del self.ANfeattots
+        del self.ANpathtots
+        del self.ANtots
+        del self.ANvecs
+        del self.ANtypetots
 
 
 if __name__=="__main__":

@@ -10,6 +10,26 @@ except:
     graphing_loaded=False
 
 
+def primes(n):
+    if n==2: return [2]
+    elif n<2: return []
+    s=range(3,n+1,2)
+    mroot = n ** 0.5
+    half=(n+1)/2-1
+    i=0
+    m=3
+    while m <= mroot:
+        if s[i]:
+            j=(m*m-3)/2
+            s[j]=0
+            while j<half:
+                s[j]=0
+                j+=m
+        i=i+1
+        m=2*i+3
+    return [2]+[x for x in s if x]
+
+
 def getPos(word):
     try:
         return word.split('/')[-1][0]
@@ -217,6 +237,8 @@ class Compound:
 class Compounder:
 
     def __init__(self,filename):
+        Compounder.seeds=primes(20000)
+        print "generated random numbers:", len(Compounder.seeds)
         self.configfile=filename
         #with open(self.configfile) as fp:
         #    self.configured=yaml.safe_load(fp)
@@ -239,7 +261,6 @@ class Compounder:
 
         except:
             print "Error: problem with configuration"
-        random.seed(17)
 
     def readcompounds(self):
         if self.ctype=="reddy":
@@ -333,12 +354,16 @@ class Compounder:
         phrase,type = matchmake(compound.split('/')[0])
         if phrase in self.compounds.keys():
             self.compounds[phrase].setFreq(freq)
+            return True
         else:
             #print "attempting lemma match for", phrase,type
             for compound in self.compounds.values():
                 if compound.lemmamatch(phrase,type):
                     #print "Lemma match for ",phrase, type
                     compound.setFreq(freq)
+                    return True
+
+        return False
 
     def correlate(self, show_graph=True):
         listX=[]
@@ -376,7 +401,9 @@ class Compounder:
         #if graphing_loaded:
         #    graphing.makescatter(listX,listA)
 
-    def crossvalidate(self,folds,p=""):
+    def crossvalidate(self,folds,p="",rep=0):
+
+        self.setup_folds(folds,rep)
         matrix=[]
         for i in range(0,folds):
 
@@ -396,15 +423,17 @@ class Compounder:
             else:
                 trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
             testingR=stats.spearmanr(np.array(TestX),np.array(TestY))
-            print p,i,trainingR[0],testingR[0]
-            line=[p,i,trainingR[0],testingR[0]]
+            myfold=rep*folds+i
+            #print p,myfold,trainingR[0],testingR[0]
+            line=[p,myfold,trainingR[0],testingR[0]]
             matrix.append(line)
         return matrix
 
 
 
-    def setup_folds(self,folds):
+    def setup_folds(self,folds,rep=0):
         #assign each compound to a random fold bin
+        random.seed(Compounder.seeds[rep])
         keys=self.compounds.keys()
         random.shuffle(keys)
         for i,key in enumerate(keys):

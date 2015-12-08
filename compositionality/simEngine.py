@@ -23,7 +23,7 @@ def profile(featdict,minorder=0,maxorder=10):
                 thisorderweight+=weight
             totalweight+=weight
 
-        print "total weight of features",totalweight
+        #print "total weight of features",totalweight
         print "total weight of required order features",thisorderweight
         profile=sorted(paths.items(),key=itemgetter(1),reverse=True)
 
@@ -66,7 +66,7 @@ class WordVector:
 
 
     def profile(self,minorder=0,maxorder=10):
-        profile(self.featdict,minorder,maxorder)
+        profile(self.features,minorder,maxorder)
 
     def cosine(self,avector):
 
@@ -81,20 +81,27 @@ class WordVector:
 
     def intersection(self,avector):
         intersect=0
-        weight=0
-        theset={}
+        rtot=0
+        ptot=0
+        pset={}
+        rset={}
         diff={}
         for feat in self.features.keys():
             if feat in avector.features.keys():
                 intersect+=1
-                iweight=avector.features[feat]
-                weight+=iweight
-                theset[feat]=iweight
+                pweight=avector.features[feat]
+                rweight=self.features[feat]
+                ptot+=pweight
+                rtot+=rweight
+                pset[feat]=pweight
+                rset[feat]=rweight
             else:
                 diff[feat]=self.features[feat]
-        #profile(theset)
-        #profile(diff)
-        return intersect,weight
+        #profile(pset)
+        print "Profiling intersection for ",self.name,avector.name
+        profile(rset)
+        profile(diff)
+        return intersect,ptot,rtot
 
     def jaccard(self,avector):
         intersect= self.intersection(avector)[0]
@@ -104,12 +111,35 @@ class WordVector:
         else:
             return 0
 
-    def recall(self,avector):
+    def precision(self,avector): #precision in predicting self by avector
         intersect=self.intersection(avector)[1]
         if intersect>0:
+            #profile(avector.features)
             return float(intersect)/float(avector.total)
         else:
             return 0
+
+    def recall(self,avector): #recall of self by avector
+
+        intersect=self.intersection(avector)[2]
+        if intersect>0:
+            #profile(self.features)
+            return float(intersect)/float(self.total)
+        else:
+            return 0
+
+    def harmonicmean(self,avector):
+        p=self.precision(avector)
+        r=self.recall(avector)
+        if p+r>0:
+            return 2*p*r/(p+r)
+        else:
+            return 0
+
+    def arithmeticmean(self,avector,beta=0.5):
+        p=self.precision(avector)
+        r=self.recall(avector)
+        return beta*p+(1-beta)*r
 
     def sim(self,avector,measure):
         if measure =="cosine":
@@ -118,6 +148,12 @@ class WordVector:
             return self.jaccard(avector)
         elif measure =="recall":
             return self.recall(avector)
+        elif measure=="precision":
+            return self.precision(avector)
+        elif measure=="harmonicmean":
+            return self.harmonicmean(avector)
+        elif measure=="arithmeticmean":
+            return self.arithmeticmean(avector)
         else:
             print "Unknown similarity measure ",measure
             exit(-1)
@@ -195,6 +231,7 @@ class SimEngine():
         self.filenames[key]=filename
         self.vectors[key]={}
         self.load(key)
+
         self.madematrix=False  #matrix must be remade
 
     def include(self,token):
@@ -225,23 +262,27 @@ class SimEngine():
         self.vectors[type][token].reducesaliency(self.saliency,saliencyperpath=self.saliencyperpath)
 
     def makematrix(self):
+        self.setup_matrix()
 
+        for type in self.vectors.keys():
+            for wordvector in self.vectors[type].values():
+                wordvector.makearray(self.fk_idx)
+        print "Completed matrix generation"
+
+
+    def setup_matrix(self):
         print "Converting to matrix form"
         fkeys=self.allfeatures.keys()
         fkeys.sort()  #don't actually need to sort - but makes the indexing more predictable
         for i in range(len(fkeys)):
             self.fk_idx[fkeys[i]]=i
 
-        #del self.allfeatures #can now delete this dictionary if memory is an issue
+        del self.allfeatures #can now delete this dictionary if memory is an issue
 
         dim=len(self.fk_idx)
+        self.madematrix=True
         print "Dimensionality is " + str(dim)
 
-        for type in self.vectors.keys():
-            for wordvector in self.vectors[type].values():
-                wordvector.makearray(self.fk_idx)
-        print "Completed matrix generation"
-        self.madematrix=True
 
     def allpairs(self,outstream=None,simmetric="cosine"):
 
@@ -271,7 +312,7 @@ class SimEngine():
     def pointwise(self,outstream=None,simmetric="cosine"):
 
         if not self.madematrix and simmetric in SimEngine.matrix_sims:
-            self.makematrix()
+            self.setup_matrix()
 
         todo=0
         for typeA in self.vectors.keys():
@@ -286,7 +327,13 @@ class SimEngine():
                         if vectorB==None:
                             sim=0.0
                         else:
-                            sim = self.vectors[typeA][wordA].sim(vectorB,measure=simmetric)
+                            vectorA=self.vectors[typeA][wordA]
+                            if simmetric in SimEngine.matrix_sims:
+                                vectorA.makearray(self.fk_idx)
+                                vectorB.makearray(self.fk_idx)
+                            sim = vectorA.sim(vectorB,measure=simmetric)
+                            vectorA.array = None
+                            vectorB.array = None
                         if outstream==None:
                             print "%s(%s_[%s],%s_[%s]) = %s"%(simmetric,wordA,typeA,wordA,typeB,str(sim))
                         else:
