@@ -230,6 +230,11 @@ class Compounder:
         #self.secondindex={} #key is second word, value is name
         self.ctype=self.config.get('default','ctype')
         try:
+            self.train_perf=(self.config.get('default','train_perf')==True)
+        except:
+            self.train_perf=False
+
+        try:
             self.compound_file=self.config.get('default','compound_file')
 
         except:
@@ -354,7 +359,8 @@ class Compounder:
         #print listY
 
         print "Mean Human Judgement score: ",np.mean(listX)
-        print "Mean AutoSim score: ",np.mean(listY)
+        error=np.std(listY)/np.sqrt(len(listY))
+        print "Mean AutoSim score: ",np.mean(listY),error
         print "Mean Log Frequency: ",np.mean(listZ)
         print "Mean Constituent Similarity: ",np.mean(listA)
         print "Spearman's Correlation Coefficient and p'value for Human Judgements vs Automatic Similarity over %s values: "%(str(len(listX))),stats.spearmanr(np.array(listX),np.array(listY))
@@ -385,7 +391,10 @@ class Compounder:
                 else:
                     TrainX.append(compound.getScore())
                     TrainY.append(compound.getSimScore())
-            trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
+            if self.train_perf:
+                trainingR=np.mean(TrainY)
+            else:
+                trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
             testingR=stats.spearmanr(np.array(TestX),np.array(TestY))
             print p,i,trainingR[0],testingR[0]
             line=[p,i,trainingR[0],testingR[0]]
