@@ -26,9 +26,12 @@ class Comparator():
             self.simmetric="cosine"
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
-            #self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
-            self.compounder.readcompounds()
-            self.loadFreqs(self.rels,outfile=self.testcompoundfile)
+
+            if 'observed' not in self.skip:
+                self.compounder.readcompounds()
+                self.loadFreqs(self.rels,outfile=self.testcompoundfile)
+            else:
+                self.compounder.generate(self.rels,outfile=self.testcompoundfile) #generate list of compounds from observed file
             print len(self.compounder.generated_compounds),self.compounder.generated_compounds
             #if self.crossvalidate:
             #    self.compounder.setup_folds(self.nfolds)
@@ -37,8 +40,6 @@ class Comparator():
         if 'revectorise' not in self.skip:
             print "Revectorising observed phrasal vectors"
             self.revectorise_observed(configfile,self.compounder.generated_compounds)
-        print "Reloading observed phrasal vectors"
-        self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
     def setup_compounds_exp(self,configfile):
 
@@ -177,7 +178,7 @@ class Comparator():
             return []
 
     def analyse(self,cv_matrix):
-        print cv_matrix
+        #print cv_matrix
 
         testrs=[]
         testps=[]
@@ -186,15 +187,15 @@ class Comparator():
         #for that fold and parameter collect test performance
         folds = self.nfolds*self.repetitions
         for i in range(0,folds):
-            maxtraining=0
-            maxindex=-1
+            besttraining=1
+            bestindex=-1
             for index,line in enumerate(cv_matrix):
                 if line[1]==i:
-                    if line[2]>maxtraining:
-                        maxtraining=line[2]
-                        maxindex=index
-            testrs.append(cv_matrix[maxindex][3])
-            testps.append(cv_matrix[maxindex][0])
+                    if line[2]<besttraining:
+                        besttraining=line[2]
+                        bestindex=index
+            testrs.append(cv_matrix[bestindex][3])
+            testps.append(cv_matrix[bestindex][0])
 
         perf=np.mean(testrs)
         error=np.std(testrs)/math.sqrt(folds)
@@ -215,6 +216,9 @@ class Comparator():
                     simfile=self.composer.outfile+".sims"
 
                     if 'sim' not in self.skip:
+                        print "Reloading observed phrasal vectors"
+                        self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
+
                         self.mySimEngine.addfile(Comparator.key2,self.composer.outfile)  #add composed vector file to SimEngine
                         with open(simfile,"w") as outstream:
                             self.mySimEngine.pointwise(outstream,simmetric=self.simmetric)
@@ -232,6 +236,8 @@ class Comparator():
                 self.analyse(cv_matrix)
 
         else:
+            print "Reloading observed phrasal vectors"
+            self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
             self.mySimEngine.allpairs()
 
 

@@ -326,6 +326,11 @@ class Composition:
         except:
             self.offsetting=Composition.offsetting
 
+        try:
+            self.distinguish=(self.config.get('default','distinguish')=='True')
+        except:
+            self.distinguish=False
+
     #----HELPER FUNCTIONS
 
     #-----
@@ -1091,7 +1096,8 @@ class Composition:
                 suffix+=".sal_"+str(self.saliency)
 
         key=str(parampair[0])+"-"+str(parampair[1])
-        outfile=self.selectpos()+self.reducedstring+".composed_"+key+suffix
+        key2="_"+str(self.compop)
+        outfile=self.selectpos()+self.reducedstring+".composed_"+key+key2+suffix
 
         return outfile
 
@@ -1167,7 +1173,12 @@ class Composition:
         deppathtots=self.pathtotsbypos[dppos][dep]
         deptot=self.totsbypos[dppos][dep]
 
-        entry=dep.split("/")[0]+"|"+rel+"|"+head
+        if self.distinguish:
+            tag="composed:"
+        else:
+            tag=""
+
+        entry=dep.split("/")[0]+"|"+tag+rel+"|"+head
         print "Composing vectors for "+entry
         self.ANvecs[entry]=self.doCompound(depvector,headvector,rel,hp=hp,op=compop,offsetting=offsetting)
         print "Composing path totals"

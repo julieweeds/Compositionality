@@ -117,12 +117,15 @@ class NounCompounder(Composition):
     def includeRel(self,rel):
         return NounCompounder.rels_to_include==[] or rel in NounCompounder.rels_to_include
 
+    def getPoSes(self):
+
+        return [pos for pos in self.myCompounder.wordsByPos.keys() if len(self.myCompounder.wordsByPos[pos])>0]
 
     def compose(self,parampair=('','')):
 
         self.outfile=self.getComposedFilename(parampair)
 
-        for pos in ["N","J","V"]:
+        for pos in self.getPoSes():
             self.pos=pos
             self.set_words()
             self.feattotsbypos[pos]=self.load_coltotals(cds=self.smooth_ppmi)

@@ -10,6 +10,26 @@ except:
     graphing_loaded=False
 
 
+def primes(n):
+    if n==2: return [2]
+    elif n<2: return []
+    s=range(3,n+1,2)
+    mroot = n ** 0.5
+    half=(n+1)/2-1
+    i=0
+    m=3
+    while m <= mroot:
+        if s[i]:
+            j=(m*m-3)/2
+            s[j]=0
+            while j<half:
+                s[j]=0
+                j+=m
+        i=i+1
+        m=2*i+3
+    return [2]+[x for x in s if x]
+
+
 def getPos(word):
     try:
         return word.split('/')[-1][0]
@@ -216,10 +236,9 @@ class Compound:
 
 class Compounder:
 
-
-    seeds=[5,17,23,37,43,51,61,71,83,91,103,117,123,131,143,157,161,173,181,197,203,213,221,233,247,251,267,271,281,293,301,317,329,331,347,351,361,371,387,397,401,413,421,433,447,451,463,473,481,497]
-
     def __init__(self,filename):
+        Compounder.seeds=primes(20000)
+        print "generated random numbers:", len(Compounder.seeds)
         self.configfile=filename
         #with open(self.configfile) as fp:
         #    self.configured=yaml.safe_load(fp)
