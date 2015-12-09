@@ -421,11 +421,11 @@ class Compounder:
             if self.train_perf:
                 trainingR=np.mean(TrainY)
             else:
-                trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))
-            testingR=stats.spearmanr(np.array(TestX),np.array(TestY))
+                trainingR=stats.spearmanr(np.array(TrainX),np.array(TrainY))[0]
+            testingR=stats.spearmanr(np.array(TestX),np.array(TestY))[0]
             myfold=rep*folds+i
             #print p,myfold,trainingR[0],testingR[0]
-            line=[p,myfold,trainingR[0],testingR[0]]
+            line=[p,myfold,trainingR,testingR]
             matrix.append(line)
         return matrix
 
