@@ -252,7 +252,7 @@ class Compounder:
         #self.secondindex={} #key is second word, value is name
         self.ctype=self.config.get('default','ctype')
         try:
-            self.train_perf=(self.config.get('default','train_perf')==True)
+            self.train_perf=(self.config.get('default','train_perf')=='True')
         except:
             self.train_perf=False
 
