@@ -211,7 +211,8 @@ class Composition:
             self.normalised = "normalise" in options or "normalised" in options #this may be the main option (to carry out normalisation) or be included as one of the optional options so that normalised counts are used
 
             self.ppmithreshold=Composition.ppmithreshold
-            self.filterfreq=Composition.filterfreq
+            self.rfilterfreq=Composition.filterfreq
+            self.cfilterfreq=Composition.filterfreq
             self.saliency=Composition.saliency
             self.saliencyperpath=Composition.saliencyperpath
             self.display=Composition.display
@@ -282,7 +283,13 @@ class Composition:
         self.ppmithreshold=float(self.config.get('default','wthreshold'))
         self.saliency=int(self.config.get('default','saliency'))
         self.saliencyperpath=self.config.get('default','saliencyperpath')
-        self.filterfreq=int(self.config.get('default','fthreshold'))
+        try:
+            self.rfilterfreq=int(self.config.get('default','rfthreshold'))
+            self.cfilterfreq=int(self.config.get('default','cfthreshold'))
+        except:
+
+            self.rfilterfreq=int(self.config.get('default','fthreshold'))
+            self.cfilterfreq=int(self.config.get('default','fthreshold'))
         self.comppairfile=self.config.get('default','comppairfile')
         self.filterfile=self.config.get('default','filterfile')
         try:
@@ -620,7 +627,7 @@ class Composition:
                 for line in instream:
                     line=line.rstrip()
                     fields=line.split("\t")
-                    if self.normalised or float(fields[1])>self.filterfreq or self.phraseinclude(fields[0]):
+                    if self.normalised or float(fields[1])>self.rfilterfreq or self.phraseinclude(fields[0]):
                         sofar=totals.get(fields[0],0)
                         totals[fields[0]]=sofar+float(fields[1])
             print "Loaded "+str(len(totals.keys()))
@@ -644,7 +651,7 @@ class Composition:
                 for line in instream:
                     line=line.rstrip()
                     fields=line.split("\t")
-                    if self.normalised or float(fields[1])>self.filterfreq:
+                    if self.normalised or float(fields[1])>self.cfilterfreq:
                         feat=convert(fields[0],delims=self.pathdelims)
                         sofar=totals.get(feat,0)
                         if cds:
@@ -673,7 +680,7 @@ class Composition:
         self.reducedstring=savereducedstring
         outstream=open(outfile,"w")
         print "Filtering for words ",self.words
-        print "Filtering for frequency ",self.filterfreq
+        print "Filtering for frequency ",self.rfilterfreq, self.cfilterfreq
         todo=len(rowtotals)
         with open(infile) as instream:
 
@@ -688,7 +695,7 @@ class Composition:
                 features=fields[1:]
                 entrytot=rowtotals.get(entry,0)
                 nofeats=0
-                if self.phraseinclude(entry) or( entrytot>self.filterfreq and self.include(entry)):
+                if self.phraseinclude(entry) or( entrytot>self.rfilterfreq and self.include(entry)):
                     outline=entry
                     #print "Filtering entry for "+entry
                     while len(features)>0:
@@ -698,7 +705,7 @@ class Composition:
                         feattot=float(coltotals.get(feat,0))
                         #print feat+"\t"+str(feattot-self.filterfreq)
 
-                        if feattot>self.filterfreq:
+                        if feattot>self.cfilterfreq:
                             outline+="\t"+feat+"\t"+freq
                             nofeats+=1
 
