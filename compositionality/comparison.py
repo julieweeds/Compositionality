@@ -72,11 +72,21 @@ class Comparator():
             self.filenames[type]=self.filenames[type]+self.reducestring.get(type,"")+self.normstring+self.weightingstring
 
         try:
+            self.offsetting=float(self.config.get('default','offsetting'))
+        except:
+            self.offsetting=Comparator.offsetting
+
+        try:
             self.nfolds=int(self.config.get('default','nfolds'))
             trialp=ast.literal_eval(self.config.get('default','trialp'))
             self.crossvalidate=True
             self.paramdict={}
-            self.paramdict["offsetting"]=trialp
+
+            try:
+                self.cv_param=self.config.get('default','cv_param')
+            except:
+                self.cv_param="offsetting"
+            self.paramdict[self.cv_param]=trialp
             try:
                 self.repetitions=int(self.config.get('default','repetitions'))
             except:
@@ -85,12 +95,7 @@ class Comparator():
             self.nfolds=0
             self.paramdict={}
             self.crossvalidate=False
-
-            try:
-                offsetting=float(self.config.get('default','offsetting'))
-            except:
-                offsetting=Comparator.offsetting
-            self.paramdict["offsetting"]=[offsetting]
+            self.paramdict["offsetting"]=[self.offsetting]
 
 
         if self.crossvalidate:
@@ -187,11 +192,11 @@ class Comparator():
         #for that fold and parameter collect test performance
         folds = self.nfolds*self.repetitions
         for i in range(0,folds):
-            besttraining=1
+            besttraining=0  #make 1 for worst, 0 for best
             bestindex=-1
             for index,line in enumerate(cv_matrix):
                 if line[1]==i:
-                    if line[2]<besttraining:
+                    if line[2]>besttraining:  #make < for worst, > for best
                         besttraining=line[2]
                         bestindex=index
             testrs.append(cv_matrix[bestindex][3])

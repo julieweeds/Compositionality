@@ -146,13 +146,18 @@ class NounCompounder(Composition):
         myvectors={}
         if parampair[0]=="offsetting":
             offsetting=float(parampair[1])
+            hp=self.headp
+        elif parampair[0]=="hp":
+            hp =float(parampair[1])
+            offsetting=float(parampair[1])
         else:
             offsetting=self.offsetting
+            hp=self.headp
 
         print "Composing type totals for "+rel
-        self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
+        self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=hp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
         print "Composing feature totals for "+rel
-        self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=self.headp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
+        self.ANfeattots=self.doCompound(self.feattotsbypos[NounCompounder.left[rel]],self.feattotsbypos[NounCompounder.right[rel]],rel,hp=hp,op=self.compop,offsetting=offsetting)  #C<*,t,f>
 
         self.ANvecs={}
         self.ANtots={}
@@ -163,7 +168,7 @@ class NounCompounder(Composition):
             #should check not lower case for pos
             try:
                 #print "Composing: "+compound.text
-                self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=self.headp,compop=self.compop,offsetting=offsetting)
+                self.CompoundCompose(compound.getLeftLex()+"/"+NounCompounder.left[rel],compound.getRightLex()+"/"+NounCompounder.right[rel],rel,hp=hp,compop=self.compop,offsetting=offsetting)
                 thischunk+=1
             except KeyError:
                 pass
