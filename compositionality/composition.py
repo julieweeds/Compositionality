@@ -329,7 +329,7 @@ class Composition:
         except:
             self.compop=Composition.compop
         try:
-            self.offsetting=self.config.get('default','offsetting')
+            self.offsetting=float(self.config.get('default','offsetting'))
         except:
             self.offsetting=Composition.offsetting
 
@@ -1213,13 +1213,13 @@ class Composition:
             headvector=temp
 
         if offsetting<=0:
-            print "using depvector"
+            #print "using depvector"
             offsetvector=dict(depvector)
         elif offsetting>=1:
-            print "using offsetvector"
+            #print "using offsetvector"
             offsetvector=self.offsetVector(depvector,Composition.basicRel[rel])
         else:
-            print "using mixture",offsetting
+            #print "using mixture",offsetting
             offsetvector=self.add(self.offsetVector(depvector,Composition.basicRel[rel]),depvector,weight=offsetting)
 
 
