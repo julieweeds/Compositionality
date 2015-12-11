@@ -282,7 +282,7 @@ class Compounder:
                         #sofar.append(aCompound.name)
                         #self.secondindex[aCompound.getSecond()]=sofar
                     else:
-                        print "Error: Duplicate noun compound"
+                        print "compounds.readcompounds() error: Duplicate noun compound", aCompound.name
 
 
     def readreddy(self):
@@ -308,7 +308,7 @@ class Compounder:
                         #sofar.append(aCompound.name)
                         #self.secondindex[aCompound.getSecond()]=sofar
                     else:
-                        print "Error: Duplicate noun compound"
+                        print "Error: Duplicate noun compound", aCompound.name
 
 
     #obsolete

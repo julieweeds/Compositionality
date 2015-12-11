@@ -220,7 +220,12 @@ class SimEngine():
                 token=fields[0]
                 featurelist=fields[1:]
                 if self.include(token):
-                    self.createvector(token,featurelist,type)
+                    print "Loading ",token
+                    try:
+                        self.createvector(token,featurelist,type)
+                    except:
+                        print "Failed to load", featurelist
+                        exit(-1)
                 else:
                     #print "Ignoring : "+token
                     pass

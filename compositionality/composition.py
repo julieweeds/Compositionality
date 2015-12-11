@@ -338,6 +338,8 @@ class Composition:
         except:
             self.distinguish=False
 
+        print "Composition offsetting: ",self.offsetting
+
     #----HELPER FUNCTIONS
 
     #-----
@@ -683,11 +685,11 @@ class Composition:
         print "Filtering for frequency ",self.rfilterfreq, self.cfilterfreq
         todo=len(rowtotals)
         with open(infile) as instream:
-
+            done=0
             for lines,line in enumerate(instream):
                 line = line.rstrip()
                 if lines%1000==0:
-                    percent=lines*100.0/todo
+                    percent=done*100.0/todo
                     print "Processing line "+str(lines)+"("+str(percent)+"%)"
                 fields=line.split("\t")
                 #entry=fields[0].lower()
@@ -696,6 +698,7 @@ class Composition:
                 entrytot=rowtotals.get(entry,0)
                 nofeats=0
                 if self.phraseinclude(entry) or( entrytot>self.rfilterfreq and self.include(entry)):
+                    done+=1
                     outline=entry
                     #print "Filtering entry for "+entry
                     while len(features)>0:
@@ -1103,8 +1106,12 @@ class Composition:
                 suffix+=".sal_"+str(self.saliency)
 
         key=str(parampair[0])+"-"+str(parampair[1])
+        if parampair[0]=="hp":
+            key1="_offsetting-"+str(self.offsetting)
+        else:
+            key1="_hp-"+str(self.headp)
         key2="_"+str(self.compop)
-        outfile=self.selectpos()+self.reducedstring+".composed_"+key+key2+suffix
+        outfile=self.selectpos()+self.reducedstring+".composed_"+key+key1+key2+suffix
 
         return outfile
 
@@ -1210,7 +1217,7 @@ class Composition:
         elif offsetting>=1:
             offsetvector=self.offsetVector(depvector,Composition.basicRel[rel])
         else:
-            offsetvector=self.add(self.offsetVector(depvector,Composition.basicRel[rel]),depvector,offsetting)
+            offsetvector=self.add(self.offsetVector(depvector,Composition.basicRel[rel]),depvector,weight=offsetting)
 
 
         if nntest:
@@ -1443,16 +1450,16 @@ class Composition:
 
     def close(self):
         #release memory by deleting stored vectors
-        del self.vecsbypos
-        del self.totsbypos
-        del self.feattotsbypos
-        del self.pathtotsbypos
-        del self.typetotsbypos
-        del self.ANfeattots
-        del self.ANpathtots
-        del self.ANtots
-        del self.ANvecs
-        del self.ANtypetots
+        self.vecsbypos={}
+        self.totsbypos={}
+        self.feattotsbypos={}
+        self.pathtotsbypos={}
+        self.typetotsbypos={}
+        self.ANfeattots={}
+        self.ANpathtots={}
+        self.ANtots={}
+        self.ANvecs={}
+        self.ANtypetots={}
 
 
 if __name__=="__main__":

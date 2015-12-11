@@ -149,11 +149,12 @@ class NounCompounder(Composition):
             hp=self.headp
         elif parampair[0]=="hp":
             hp =float(parampair[1])
-            offsetting=float(parampair[1])
+            offsetting=self.offsetting
         else:
             offsetting=self.offsetting
             hp=self.headp
-
+        print "Offsetting: ",offsetting
+        print "HeadP: ",hp
         print "Composing type totals for "+rel
         self.ANtypetots=self.doCompound(self.typetotsbypos[NounCompounder.left[rel]],self.typetotsbypos[NounCompounder.right[rel]],rel,hp=hp,op=self.compop,offsetting=offsetting)  #C<*,t,*>
         print "Composing feature totals for "+rel

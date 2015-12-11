@@ -4,6 +4,12 @@ __author__ = 'juliewe'
 import compounds,sys, ConfigParser,ast, nouncompounds, numpy as np, composition,math
 from simEngine import SimEngine
 
+def getValue(text):
+    # extract 0.25 from offsetting:0.25
+    fields=text.split(":")
+    return float(fields[1])
+
+
 class Comparator():
     key1="observed"
     key2="composed"
@@ -102,6 +108,8 @@ class Comparator():
             print "Cross-validation: number of folds = "+str(self.nfolds)
             print "Number of repetitions = "+str(self.repetitions)
             print self.paramdict
+            print "Default off-setting: ",self.offsetting
+
         else:
             print "No cross-validation"
             print self.paramdict
@@ -200,12 +208,15 @@ class Comparator():
                         besttraining=line[2]
                         bestindex=index
             testrs.append(cv_matrix[bestindex][3])
-            testps.append(cv_matrix[bestindex][0])
+            testps.append(getValue(cv_matrix[bestindex][0]))
 
         perf=np.mean(testrs)
         error=np.std(testrs)/math.sqrt(folds)
         print "Cross-validated performance over %s repetitions is %s with error %s"%(str(len(testrs)),str(perf),str(error))
-        print "Chosen parameter settings: ",testps
+        mp=np.mean(testps)
+        msd=np.std(testps)
+        print "Mean Chosen parameter settings: ",str(mp),str(msd)
+
 
     def run(self):
         if self.exp_type=='compounds':
@@ -213,6 +224,7 @@ class Comparator():
             for key in self.paramdict.keys():
                 for value in self.paramdict[key]:
                     if 'compose' not in self.skip:
+                        print "Running composer"
                         self.composer.run(parampair=(key,value))  #run composer to create composed vectors
                         self.composer.close()
                     else:
@@ -221,6 +233,7 @@ class Comparator():
                     simfile=self.composer.outfile+".sims"
 
                     if 'sim' not in self.skip:
+                        print "Running sim engine"
                         print "Reloading observed phrasal vectors"
                         self.mySimEngine=self.generate_SimEngine()  #will load observed vectors
 
@@ -230,6 +243,7 @@ class Comparator():
 
                     #self.calcInternalSims()
                     if 'correlate' not in self.skip:
+                        print "Running correlation"
                         with open(simfile,'r') as instream:
                             m=self.correlate(instream,parampair=(key,value))
                         if len(m)>0:
