@@ -1213,10 +1213,13 @@ class Composition:
             headvector=temp
 
         if offsetting<=0:
+            print "using depvector"
             offsetvector=dict(depvector)
         elif offsetting>=1:
+            print "using offsetvector"
             offsetvector=self.offsetVector(depvector,Composition.basicRel[rel])
         else:
+            print "using mixture",offsetting
             offsetvector=self.add(self.offsetVector(depvector,Composition.basicRel[rel]),depvector,weight=offsetting)
 
 
