@@ -129,7 +129,7 @@ class Comparator():
         if self.composer.untyped:
             SimEngine.minorder=0
             SimEngine.maxorder=0
-            
+
         return simEngine
 
     def isCompound(self,token):
