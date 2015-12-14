@@ -121,14 +121,15 @@ class Comparator():
 
     def generate_SimEngine(self):
 
+        if self.composer.untyped:
+            SimEngine.minorder=0
+            SimEngine.maxorder=0
+
         if self.exp_type==('compounds'):
             simEngine=SimEngine(self.filenames,self.isListedCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.saliency,saliencyperpath=self.composer.saliencyperpath)
         elif self.exp_type==('simple_compounds'):
             simEngine=SimEngine(self.filenames,self.isCompound,pathdelim=self.composer.pathdelims[0],saliency=self.composer.saliency,saliencyperpath=self.composer.saliencyperpath)
 
-        if self.composer.untyped:
-            SimEngine.minorder=0
-            SimEngine.maxorder=0
 
         return simEngine
 
