@@ -137,6 +137,22 @@ def checkphraseformat(line):
     else:
         return line
 
+def untype_cols(col_totals):
+
+    totals={}
+    for feat in col_totals.keys():
+        newfeat=getpathvalue(feat)
+        totals[newfeat]=totals.get(newfeat,0)+col_totals[feat]
+    return totals
+
+
+def untype_vecs(vecs):
+
+    for entry in vecs.keys():
+        vecs[entry]=untype_cols(vecs[entry])
+    return vecs
+
+
 class Composition:
 
     nouns=[]
@@ -337,6 +353,11 @@ class Composition:
             self.distinguish=(self.config.get('default','distinguish')=='True')
         except:
             self.distinguish=False
+
+        try:
+            self.untyped=(self.config.get('default','untyped')=='True')
+        except:
+            self.untyped=False
 
         print "Composition offsetting: ",self.offsetting
 
@@ -901,22 +922,86 @@ class Composition:
 
     def computeppmi(self,vecs,pathtots,feattots,typetots,entrytots):
 
+        if self.untyped:
+            ppmivecs=self.compute_untyped_ppmi(untype_vecs(vecs),untype_cols(feattots),entrytots)
+        else:
+            ppmivecs={}
+            grandtot=0.0
+            if self.pp_normal:
+                print "Computing pnppmi"
+            elif self.gof_ppmi:
+                print "Computing gof_ppmi"
+                for type in typetots.keys():
+                    grandtot+=float(typetots[type])
+                if self.smooth_ppmi:
+                    grandtot=math.pow(grandtot,0.75)
+
+                    #print type, grandtot
+            else:
+                print "Computing ppmi"
+            done =0
+            todo=len(vecs.keys())
+
+            for entry in vecs.keys():
+                #print entry
+                ppmivector={}
+
+                vector=vecs[entry]
+                for feature in vector.keys():
+                    freq=float(vector[feature])  # C<w1,p,w2>
+                    try:
+                        total=float(pathtots[entry][self.getpathtype(feature)]) # C<w1,p,*>
+                    except:
+                        total=0.0001
+                        print "Warning: no path total for %s: %s"%(feature,self.getpathtype(feature))
+                    feattot=float(feattots[feature]) #C<*,p,w2>
+                    typetot=float(typetots[self.getpathtype(feature)]) #C<*,p,*>
+                    entrytotal=float(entrytots[entry]) # C<w1,*,*>
+
+                  #  if self.smooth_ppmi:
+                  #      feattot=math.pow(feattot,0.75)
+                  #      typetot=math.pow(typetot,0.75)  # NO - not the same - need totals computed from smoothed values - need to smooth before computing type totals
+
+
+                    try:
+                        if self.gof_ppmi:
+
+                            pmi=math.log10((freq*grandtot)/(feattot*entrytotal))
+                        else:
+                            pmi=math.log10((freq*typetot)/(feattot*total))
+                    except:
+                        pmi=0
+                    shifted_pmi=pmi-self.ppmithreshold
+                    if shifted_pmi>0:
+                        if self.pp_normal:
+
+                            shifted_pmi=shifted_pmi * total/entrytotal
+                        ppmivector[feature]=shifted_pmi
+
+                done+=1
+                if done%1000==0:
+                    percent=done*100.0/todo
+                    print "Completed "+str(done)+" vectors ("+str(percent)+"%)"
+
+
+
+                ppmivecs[entry]=self.mostsalient_vector(ppmivector)
+                #print ppmivector
+        return ppmivecs
+
+    def compute_untyped_ppmi(self,vecs,col_totals,row_totals):
         ppmivecs={}
-        grandtot=0.0
         if self.pp_normal:
             print "Computing pnppmi"
-        elif self.gof_ppmi:
-            print "Computing gof_ppmi"
-            for type in typetots.keys():
-                grandtot+=float(typetots[type])
-            if self.smooth_ppmi:
-                grandtot=math.pow(grandtot,0.75)
 
-                #print type, grandtot
         else:
             print "Computing ppmi"
         done =0
         todo=len(vecs.keys())
+        grandtot=0.0
+        for feat in col_totals.keys():
+            grandtot+=col_totals[feat]
+
 
         for entry in vecs.keys():
             #print entry
@@ -925,33 +1010,15 @@ class Composition:
             vector=vecs[entry]
             for feature in vector.keys():
                 freq=float(vector[feature])  # C<w1,p,w2>
+                feattot=float(col_totals[feature]) #C<*,w2>
+                entrytotal=float(row_totals[entry]) # C<w1,*>
                 try:
-                    total=float(pathtots[entry][self.getpathtype(feature)]) # C<w1,p,*>
-                except:
-                    total=0.0001
-                    print "Warning: no path total for %s: %s"%(feature,self.getpathtype(feature))
-                feattot=float(feattots[feature]) #C<*,p,w2>
-                typetot=float(typetots[self.getpathtype(feature)]) #C<*,p,*>
-                entrytotal=float(entrytots[entry]) # C<w1,*,*>
+                    pmi=math.log10((freq*grandtot)/(feattot*entrytotal))
 
-              #  if self.smooth_ppmi:
-              #      feattot=math.pow(feattot,0.75)
-              #      typetot=math.pow(typetot,0.75)  # NO - not the same - need totals computed from smoothed values - need to smooth before computing type totals
-
-
-                try:
-                    if self.gof_ppmi:
-
-                        pmi=math.log10((freq*grandtot)/(feattot*entrytotal))
-                    else:
-                        pmi=math.log10((freq*typetot)/(feattot*total))
                 except:
                     pmi=0
                 shifted_pmi=pmi-self.ppmithreshold
                 if shifted_pmi>0:
-                    if self.pp_normal:
-
-                        shifted_pmi=shifted_pmi * total/entrytotal
                     ppmivector[feature]=shifted_pmi
 
             done+=1
@@ -964,6 +1031,8 @@ class Composition:
             ppmivecs[entry]=self.mostsalient_vector(ppmivector)
             #print ppmivector
         return ppmivecs
+
+
 
     #-----
     #REVECTORISE
