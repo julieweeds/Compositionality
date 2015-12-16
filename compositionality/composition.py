@@ -622,14 +622,15 @@ class Composition:
                     feat=convert(features.pop(),delims=self.pathdelims)
 
                     #print str(index)+"\t"+feat+"\t"+str(freq)
-                    try:
-                        freq=float(freq)
-                        rowtotal+=freq
-                        current=featuretotals.get(feat,0.0)
-                        featuretotals[feat]=current+freq
-                    except ValueError:
-                        print "Error: "+str(index)+"\t"+feat+"\t"+str(freq)+"\n"
-                        features=features+list(feat)
+                    if feat!="__FILTERED__":
+                        try:
+                            freq=float(freq)
+                            rowtotal+=freq
+                            current=featuretotals.get(feat,0.0)
+                            featuretotals[feat]=current+freq
+                        except ValueError:
+                            print "Error: "+str(index)+"\t"+feat+"\t"+str(freq)+"\n"
+                            features=features+list(feat)
 
 
 
@@ -733,12 +734,13 @@ class Composition:
                         freq=features.pop()
                         #feat=features.pop().lower()
                         feat=convert(features.pop(),delims=self.pathdelims)
-                        feattot=float(coltotals.get(feat,0))
-                        #print feat+"\t"+str(feattot-self.filterfreq)
+                        if feat!="___FILTERED___":
+                            feattot=float(coltotals.get(feat,0))
+                            #print feat+"\t"+str(feattot-self.filterfreq)
 
-                        if feattot>self.cfilterfreq:
-                            outline+="\t"+feat+"\t"+freq
-                            nofeats+=1
+                            if feattot>self.cfilterfreq:
+                                outline+="\t"+feat+"\t"+freq
+                                nofeats+=1
 
                     if nofeats>0:
                         outstream.write(outline+"\n")
@@ -776,8 +778,9 @@ class Composition:
                 while len(features)>0:
                     weight=float(features.pop())
                     feat=convert(features.pop(),delims=self.pathdelims)
-                    weight = weight/entrytot
-                    outline+="\t"+feat+"\t"+str(weight)
+                    if feat!="___FILTERED___":
+                        weight = weight/entrytot
+                        outline+="\t"+feat+"\t"+str(weight)
                 outline+="\n"
                 outstream.write(outline)
                 if lines%1000==0:
@@ -820,16 +823,17 @@ class Composition:
                             index+=1
 
                             freq=features.pop()
-                            feat=convert(features.pop(),delims=self.pathdelims)
-                            #print feat
 
-                            #print str(index)+"\t"+feat+"\t"+str(freq)
-                            try:
-                                freq=float(freq)
-                                vector[feat]=freq
-                            except ValueError:
-                                print "Error: "+str(index)+"\t"+feat+"\t"+str(freq)+"\n"
-                                features=features+list(feat)
+                            feat=convert(features.pop(),delims=self.pathdelims)
+                                #print feat
+                            if feat!="___FILTERED___":
+                                #print str(index)+"\t"+feat+"\t"+str(freq)
+                                try:
+                                    freq=float(freq)
+                                    vector[feat]=freq
+                                except ValueError:
+                                    print "Error: "+str(index)+"\t"+feat+"\t"+str(freq)+"\n"
+                                    features=features+list(feat)
                         if entry in vecs.keys():
                             vecs[entry]=self.add(vecs[entry],vector)
                         else:
