@@ -410,6 +410,9 @@ class Composition:
     #boolean function as to whether a word is in self.words or self.words=[]
     #-----
     def include(self,word):
+
+        if word=="___FILTERED___":
+            return False
         if len(self.words)==0:
             return True
         elif word in self.words:
@@ -650,7 +653,7 @@ class Composition:
                 for line in instream:
                     line=line.rstrip()
                     fields=line.split("\t")
-                    if self.normalised or float(fields[1])>self.rfilterfreq or self.phraseinclude(fields[0]):
+                    if fields[0] != "___FILTERED___" and (self.normalised or float(fields[1])>self.rfilterfreq or self.phraseinclude(fields[0])):
                         sofar=totals.get(fields[0],0)
                         totals[fields[0]]=sofar+float(fields[1])
             print "Loaded "+str(len(totals.keys()))
@@ -674,7 +677,7 @@ class Composition:
                 for line in instream:
                     line=line.rstrip()
                     fields=line.split("\t")
-                    if self.normalised or float(fields[1])>self.cfilterfreq:
+                    if fields[0] != "___FILTERED___" and (self.normalised or float(fields[1])>self.cfilterfreq):
                         feat=convert(fields[0],delims=self.pathdelims)
                         sofar=totals.get(feat,0)
                         if cds:
