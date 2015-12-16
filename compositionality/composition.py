@@ -361,6 +361,10 @@ class Composition:
 
         print "Composition offsetting: ",self.offsetting
 
+        try:
+            self.vtype=self.config.get('default','vtype')
+        except:
+            self.vtype="apt"
     #----HELPER FUNCTIONS
 
     #-----

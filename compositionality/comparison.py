@@ -30,6 +30,11 @@ class Comparator():
             self.simmetric=self.config.get('default','simmetric')
         except:
             self.simmetric="cosine"
+
+        try:
+            self.vtype=self.config.get('default','vtype')
+        except:
+            self.vtype="apt"
         if self.exp_type=="compounds":
             self.setup_compounds_exp(configfile)
 
@@ -60,7 +65,10 @@ class Comparator():
         self.testcompoundfile=self.config.get('compounder','compound_file')
 
         self.reducestring={}
-        self.reducestring[Comparator.key1]=".nouns.reduce_0_2"
+        if self.vtype=="byblo":
+            self.reducestring[Comparator.key1]=".nouns.reduce_1_1"
+        else:
+            self.reducestring[Comparator.key1]=".nouns.reduce_0_2"
         self.normstring=".filtered"
         if self.composer.normalised:
             self.normstring+=".norm"
