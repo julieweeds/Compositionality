@@ -349,7 +349,24 @@ class SimEngine():
                             percentage=done*100.0/todo
                             print "Completed %s calculations = %s percent"%(str(done),str(percentage))
 
+    def selectedSims(self,pairlist,outstream=None,simmetric="cosine"):
+        if not self.madematrix and simmetric in SimEngine.matrix_sims:
+            self.setup_matrix()
+        todo = len(pairlist)
 
+
+        for type in self.vectors.keys():
+            for pair in pairlist:
+                wordA=pair(0)+"/"+type  #this may need to be generalised as type is not always POS but it is for MEN exps
+                wordB=pair(1)+"/"+type
+                vectorA=self.vectors[type].get(wordA,None)
+                vectorB=self.vectors[type].get(wordB,None)
+
+                if vectorA==None or vectorB==None:
+                    sim=0
+                else:
+                    if simmetric in SimEngine.matrix_sims:
+                        vectorA.makearray(self.fk_idx)  #TODO: finish
 
 if __name__=="__main__":
 

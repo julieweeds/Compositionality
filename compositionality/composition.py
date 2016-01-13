@@ -19,9 +19,10 @@ from operator import itemgetter
 
 try:
     import graphing
+    graphing_loaded=True
 except IOError,ImportError:
     print "Warning: Unable to import graphing module"
-
+    graphing_loaded=False
 try:
     import yaml
 except ImportError,IOError:
@@ -773,16 +774,17 @@ class Composition:
                 fields=line.split("\t")
                 entry=fields[0]
                 features=fields[1:]
-                entrytot=rowtotals[entry]
-                outline=entry
-                while len(features)>0:
-                    weight=float(features.pop())
-                    feat=convert(features.pop(),delims=self.pathdelims)
-                    if feat!="___FILTERED___":
-                        weight = weight/entrytot
-                        outline+="\t"+feat+"\t"+str(weight)
-                outline+="\n"
-                outstream.write(outline)
+                if entry!="___FILTERED___":
+                    entrytot=rowtotals[entry]
+                    outline=entry
+                    while len(features)>0:
+                        weight=float(features.pop())
+                        feat=convert(features.pop(),delims=self.pathdelims)
+                        if feat!="___FILTERED___":
+                            weight = weight/entrytot
+                            outline+="\t"+feat+"\t"+str(weight)
+                    outline+="\n"
+                    outstream.write(outline)
                 if lines%1000==0:
                     percent=lines*100.0/todo
                     print "Completed "+str(lines)+" vectors ("+str(percent)+"%)"
@@ -919,6 +921,19 @@ class Composition:
             #print pathtotals[entry]
             #print "nn:" + str(pathtotals[entry].get('nn',"not present"))
         return pathtotals
+
+    #--
+    #compute the feature totals for a set of vectors (potentially after PPMI calculation)
+    #----
+    def compute_feattots(selfs,vectors):
+
+        features={}
+        for entry in vectors.keys():
+            vec =vectors[entry]
+            for feature in vec.keys():
+                features[feature]=features.get(feature,0)+vec[feature]
+
+        return features
 
     #----
     #compute ppmi (or similar) for a set of vectors and return new set of vectors
@@ -1079,6 +1094,12 @@ class Composition:
 
         ppmivecs=self.computeppmi(self.vecsbypos[self.pos],self.pathtotsbypos[self.pos],self.feattotsbypos[self.pos],self.typetotsbypos[self.pos],self.totsbypos[self.pos])
         self.output(ppmivecs,outfile)
+        if graphing_loaded:
+            graphing.display_bargraph(self.typetotsbypos[self.pos],title="Path Distribution by Probability")
+            ppmifeattots=self.compute_feattots(ppmivecs)
+            ppmitypetots=self.compute_typetotals(ppmifeattots)
+            weightstring=suffix.split('.')[-1]
+            graphing.display_bargraph(ppmitypetots,title="Path Distribution by Feature Association: "+weightstring)
 
 
     #---
