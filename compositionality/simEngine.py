@@ -2,7 +2,7 @@ from operator import itemgetter
 
 __author__ = 'juliewe'
 
-import numpy as np, scipy.sparse as sparse,sys
+import numpy as np, scipy.sparse as sparse,sys,math
 from composition import getorder,getpathtype
 
 def isAny(token):
@@ -29,6 +29,16 @@ def profile(featdict,minorder=0,maxorder=10):
 
         print profile
 
+#----
+#get the path prefix / dependency path of a given feature
+#self.getpathtype("amod:red") = amod
+#self.getpathtype("_dobj>>amod:red") = _dobj>>amod
+#----
+def getpathtype(feature):
+    #get the path of a given feature
+    fields=feature.split(":")
+    return fields[0]
+
 class WordVector:
 
     def __init__(self,token):
@@ -38,10 +48,17 @@ class WordVector:
         self.lgth=-1
         self.wdth=-1
         self.total=0
+        self.pathtotals={}
 
     def addfeature(self,f,sc):
         self.features[f]=sc
         self.total+=sc
+
+    def updateweights(self,featdict):
+        self.features=dict(featdict)
+        self.total=0
+        for f in self.features:
+            self.total+=self.features[f]
 
     def makearray(self,fk_idx):
         temparray=np.zeros(len(fk_idx))
@@ -158,6 +175,53 @@ class WordVector:
             print "Unknown similarity measure ",measure
             exit(-1)
 
+    def computepathtotals(self):
+
+        self.pathtotals={}
+        for feature in self.features.keys():
+            pathtype=getpathtype(feature)
+            sofar=self.pathtotals.get(pathtype,0.0)
+            self.pathtotals[pathtype]=sofar+float(self.features[feature])
+
+    def reweight(self,weighting,feattots,typetots,grandtot=0,ppmithreshold=0):
+         for feature in self.features.keys():
+            freq=float(self.features[feature])  # C<w1,p,w2>
+            try:
+                total=float(self.pathtotals[getpathtype(feature)]) # C<w1,p,*>
+            except:
+                total=0.0001
+                print "Warning: no path total for %s: %s"%(feature,getpathtype(feature))
+            feattot=float(feattots[feature]) #C<*,p,w2>
+            typetot=float(typetots[getpathtype(feature)]) #C<*,p,*>
+            entrytotal=float(self.total) # C<w1,*,*>
+
+            if "ttest" in weighting:
+                expected = (total*feattot)/(typetot*typetot)
+                obs=freq/typetot
+                score= (obs-expected)/math.pow(expected,0.5)
+                if score>ppmithreshold:
+                    self.features[feature]=score
+            else:
+
+                try:
+                    if "gof_ppmi" in weighting:
+
+                        pmi=math.log10((freq*grandtot)/(feattot*entrytotal))
+                    else:
+                        pmi=math.log10((freq*typetot)/(feattot*total))
+                except:
+                    pmi=0
+                shifted_pmi=pmi-ppmithreshold
+                if shifted_pmi>0:
+                    if "pnppmi" in weighting:
+
+                        shifted_pmi=shifted_pmi * total/entrytotal
+
+                    if "plmi" in weighting:
+                        shifted_pmi=shifted_pmi * freq/typetot
+                    self.features[feature]=shifted_pmi
+
+
     def reducesaliency(self,saliency,saliencyperpath=False):
         if saliency==0:
             return
@@ -200,13 +264,22 @@ class SimEngine():
         self.pathdelim=pathdelim
         self.saliency=saliency
         self.saliencyperpath=saliencyperpath
+        self.coltots_loaded={}
+        self.rowtots_loaded={}
         for type in self.filenames.keys():
             self.vectors[type]={}
+            self.coltots_loaded[type]=False
+            self.rowtots_loaded[type]=False
         for type in self.filenames.keys():
             self.load(type)
 
-        self.madematrix=False
 
+        self.entrytotals={}
+        self.feattots={}
+        self.typetots={}
+        #self.pathtots={}
+        self.madematrix=False
+        self.ppmithreshold=0
 
 
     def load(self,type):
@@ -230,6 +303,119 @@ class SimEngine():
                     #print "Ignoring : "+token
                     pass
         print "Loaded %s vectors from file %s with key: %s" %(str(len(self.vectors[type].keys())),vectorfile, type)
+
+    def load_rowtotals(self,type):
+
+        if not self.rowtots_loaded[type]:
+            rowtotals=self.filenames[type]+".rtot"
+            self.entrytotals={}
+            print "Loading entry totals from: "+rowtotals
+            with open(rowtotals) as instream:
+                for line in instream:
+                    line=line.rstrip()
+                    fields=line.split("\t")
+                    if self.include(fields[0]):
+                        self.vectors[type][fields[0]].total=float(fields[1])
+
+                        #sofar=self.entrytotals.get(fields[0],0)
+                        #self.entrytotals[fields[0]]=sofar+float(fields[1])
+            print "Loaded "+str(len(self.entrytotals.keys()))
+
+            self.setrowsloaded(type)
+
+    def setrowsloaded(self,type):
+        for t in self.rowtots_loaded.keys():
+            self.rowtots_loaded[t]=False
+        self.rowtots_loaded[type]=True
+
+    def setcolsloaded(self,type):
+        for t in self.coltots_loaded.keys():
+            self.coltots_loaded[t]=False
+        self.coltots_loaded[type]=True
+
+
+    def load_coltotals(self,type,cds=False):
+
+        if not self.coltots_loaded[type]:
+            coltotals=self.filenames[type]+".ctot"
+            self.feattots={}
+            print "Loading feature totals from: "+coltotals
+            with open(coltotals) as instream:
+                for line in instream:
+                    line=line.rstrip()
+                    fields=line.split("\t")
+                    if fields[0] != "___FILTERED___":
+                        feat=fields[0]
+                        sofar=self.feattots.get(feat,0)
+                        if cds:
+                            self.feattots[feat]=pow(float(fields[1]),0.75)+sofar
+                        else:
+                            self.feattots[feat]=float(fields[1])+sofar
+            print "Loaded "+str(len(self.feattots.keys()))
+            self.setcolsloaded(type)
+
+    #---
+    #use the totals for each feature to compute grand totals for each feature type (e.g., "amod")
+    #this is C<*,t,*> and is computed by S_f C<*,t,f>
+    #----
+    def compute_typetotals(self,type,cds=False):
+        #compute totals for different paths over all entries (using column totals given in feattots)
+
+        if not self.coltots_loaded[type]:
+            self.load_coltotals(type,cds)
+        print "Computing path totals C<*,t,*>"
+        self.typetots={}
+        for feature in self.feattots.keys():
+            pathtype=getpathtype(feature)
+            sofar=self.typetots.get(pathtype,0.0)
+            self.typetots[pathtype]=sofar+float(self.feattots[feature])
+
+
+
+    #--
+    #compute path totals for each entry
+    #i.e., C<w1,t,*>
+    #this is needed in the standard PPMI calculation we use
+    #----
+    def compute_entrypathtotals(self,type):
+        #compute totals for the different paths for each entry
+        print "Computing path totals for each entry C<w1,t,*>"
+        #self.pathtots={}
+        for entry in self.vectors[type].keys():
+            #totalvector={}
+            self.vectors[type][entry].computepathtotals()
+
+
+    def reweight(self,type,weighting=["ppmi"],ppmithreshold=0):
+
+        #self.load_rowtotals(type)
+        self.compute_typetotals(type,cds=("smooth_ppmi" in weighting))
+        self.compute_entrypathtotals(type)
+        grandtot=0.0
+        if "pnppmi" in weighting:
+            print "Computing pnppmi"
+        elif "gof_ppmi" in weighting:
+            print "Computing gof_ppmi"
+            for type in self.typetots.keys():
+                grandtot+=float(self.typetots[type])
+        elif "plmi" in weighting:
+            print "Computing localised PPMI"
+
+        elif "ttest" in weighting:
+            print "Computing ttest values"
+        else:
+            print "Computing ppmi"
+        done =0
+        todo=len(self.vectors[type].keys())
+
+        for entry in self.vectors[type].keys():
+
+            self.vectors[type][entry].reweight(weighting,self.feattots,self.typetots,grandtot=grandtot,ppmithreshold=ppmithreshold)
+            done+=1
+            if done%1000==0:
+                percent=done*100.0/todo
+                print "Completed "+str(done)+" vectors ("+str(percent)+"%)"
+
 
 
     def addfile(self,key, filename):
@@ -354,19 +540,37 @@ class SimEngine():
             self.setup_matrix()
         todo = len(pairlist)
 
-
+        done=0
+        print self.vectors.keys()
+        print pairlist
+        results=[]
         for type in self.vectors.keys():
             for pair in pairlist:
-                wordA=pair(0)+"/"+type  #this may need to be generalised as type is not always POS but it is for MEN exps
-                wordB=pair(1)+"/"+type
+                wordA=pair[0]+"/"+type  #this may need to be generalised as type is not always POS but it is for MEN exps
+                wordB=pair[1]+"/"+type
                 vectorA=self.vectors[type].get(wordA,None)
                 vectorB=self.vectors[type].get(wordB,None)
 
                 if vectorA==None or vectorB==None:
-                    sim=0
+                    sim=-1
                 else:
                     if simmetric in SimEngine.matrix_sims:
-                        vectorA.makearray(self.fk_idx)  #TODO: finish
+                        vectorA.makearray(self.fk_idx)
+                        vectorB.makearray(self.fk_idx)
+                    sim=vectorA.sim(vectorB,measure=simmetric)
+                    vectorA.array=None
+                    vectorB.array=None
+                results.append(sim)
+                if outstream==None:
+                    print "%s(%s,%s) = %s"%(simmetric,wordA,wordB,str(sim))
+                else:
+                    outstream.write("%s\t%s\t%s\n"%(wordA,wordB,str(sim)))
+
+                done+=1
+                if (done%10000)==0:
+                    percentage=done*100.0/todo
+                    print "Completed %s calculations = %s percent"%(str(done),str(percentage))
+        return results
 
 if __name__=="__main__":
 
