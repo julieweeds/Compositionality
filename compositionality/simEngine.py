@@ -49,21 +49,20 @@ class WordVector:
         self.wdth=-1
         self.total=0
         self.pathtotals={}
+        self.featureweights={}
+
 
     def addfeature(self,f,sc):
         self.features[f]=sc
         self.total+=sc
+        self.featureweights[f]=sc
 
-    def updateweights(self,featdict):
-        self.features=dict(featdict)
-        self.total=0
-        for f in self.features:
-            self.total+=self.features[f]
+
 
     def makearray(self,fk_idx):
         temparray=np.zeros(len(fk_idx))
-        for feature in self.features.keys():
-            temparray[fk_idx[feature]]=self.features[feature]
+        for feature in self.featureweights.keys():
+            temparray[fk_idx[feature]]=self.featureweights[feature]
 
         self.array=sparse.csr_matrix(temparray)
 
@@ -103,17 +102,17 @@ class WordVector:
         pset={}
         rset={}
         diff={}
-        for feat in self.features.keys():
-            if feat in avector.features.keys():
+        for feat in self.featureweights.keys():
+            if feat in avector.featureweights.keys():
                 intersect+=1
-                pweight=avector.features[feat]
-                rweight=self.features[feat]
+                pweight=avector.featureweights[feat]
+                rweight=self.featureweights[feat]
                 ptot+=pweight
                 rtot+=rweight
                 pset[feat]=pweight
                 rset[feat]=rweight
             else:
-                diff[feat]=self.features[feat]
+                diff[feat]=self.featureweights[feat]
         #profile(pset)
         print "Profiling intersection for ",self.name,avector.name
         profile(rset)
@@ -184,7 +183,10 @@ class WordVector:
             self.pathtotals[pathtype]=sofar+float(self.features[feature])
 
     def reweight(self,weighting,feattots,typetots,grandtot=0,ppmithreshold=0):
-         for feature in self.features.keys():
+        self.featureweights={}
+        self.lgth=-1
+        self.wdth=-1
+        for feature in self.features.keys():
             freq=float(self.features[feature])  # C<w1,p,w2>
             try:
                 total=float(self.pathtotals[getpathtype(feature)]) # C<w1,p,*>
@@ -200,7 +202,7 @@ class WordVector:
                 obs=freq/typetot
                 score= (obs-expected)/math.pow(expected,0.5)
                 if score>ppmithreshold:
-                    self.features[feature]=score
+                    self.featureweights[feature]=score
             else:
 
                 try:
@@ -219,7 +221,7 @@ class WordVector:
 
                     if "plmi" in weighting:
                         shifted_pmi=shifted_pmi * freq/typetot
-                    self.features[feature]=shifted_pmi
+                    self.featureweights[feature]=shifted_pmi
 
 
     def reducesaliency(self,saliency,saliencyperpath=False):
@@ -265,11 +267,10 @@ class SimEngine():
         self.saliency=saliency
         self.saliencyperpath=saliencyperpath
         self.coltots_loaded={}
-        self.rowtots_loaded={}
+        self.totals_computed=False
         for type in self.filenames.keys():
             self.vectors[type]={}
             self.coltots_loaded[type]=False
-            self.rowtots_loaded[type]=False
         for type in self.filenames.keys():
             self.load(type)
 
@@ -385,12 +386,18 @@ class SimEngine():
             #totalvector={}
             self.vectors[type][entry].computepathtotals()
 
+    def compute_totals(self,type,cds=False):
+        self.compute_typetotals(type,cds)
+        self.compute_entrypathtotals(type)
+        self.totals_computed=True
+
+
 
     def reweight(self,type,weighting=["ppmi"],ppmithreshold=0):
 
         #self.load_rowtotals(type)
-        self.compute_typetotals(type,cds=("smooth_ppmi" in weighting))
-        self.compute_entrypathtotals(type)
+        if not self.totals_computed:
+            self.compute_totals(type,cds=("smooth_ppmi" in weighting))
         grandtot=0.0
         if "pnppmi" in weighting:
             print "Computing pnppmi"
@@ -403,8 +410,11 @@ class SimEngine():
 
         elif "ttest" in weighting:
             print "Computing ttest values"
-        else:
+        elif "ppmi" in weighting:
             print "Computing ppmi"
+        else:
+            print "No reweighting to do"
+            return
         done =0
         todo=len(self.vectors[type].keys())
 
