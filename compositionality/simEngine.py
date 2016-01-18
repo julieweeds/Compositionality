@@ -182,7 +182,7 @@ class WordVector:
             sofar=self.pathtotals.get(pathtype,0.0)
             self.pathtotals[pathtype]=sofar+float(self.features[feature])
 
-    def reweight(self,weighting,feattots,typetots,grandtot=0,ppmithreshold=0):
+    def reweight(self,weighting,feattots,typetots,grandtot=0,ppmithreshold=0,saliency=0):
         self.featureweights={}
         self.lgth=-1
         self.wdth=-1
@@ -222,15 +222,17 @@ class WordVector:
                     if "plmi" in weighting:
                         shifted_pmi=shifted_pmi * freq/typetot
                     self.featureweights[feature]=shifted_pmi
+        self.reducesaliency(saliency)
+
 
 
     def reducesaliency(self,saliency,saliencyperpath=False):
         if saliency==0:
             return
         else:
-
-            feats=sorted(self.features.items(),key=itemgetter(1),reverse=True)
-            self.features={}
+            print "Carrying out saliency reduction / context selection to top",str(saliency)
+            feats=sorted(self.featureweights.items(),key=itemgetter(1),reverse=True)
+            self.featureweights={}
             donetypes={}
             all=0
             for tuple in feats:
@@ -238,7 +240,7 @@ class WordVector:
                 pathtype=getpathtype(feature)
                 done=donetypes.get(pathtype,0)
                 if (saliencyperpath and done<saliency)or(not saliencyperpath and all<saliency):
-                    self.features[feature]=tuple[1]
+                    self.featureweights[feature]=tuple[1]
                     donetypes[pathtype]=done+1
                     all+=1
 
@@ -393,7 +395,7 @@ class SimEngine():
 
 
 
-    def reweight(self,type,weighting=["ppmi"],ppmithreshold=0):
+    def reweight(self,type,weighting=["ppmi"],ppmithreshold=0,saliency=0):
 
         #self.load_rowtotals(type)
         if not self.totals_computed:
@@ -420,7 +422,7 @@ class SimEngine():
 
         for entry in self.vectors[type].keys():
 
-            self.vectors[type][entry].reweight(weighting,self.feattots,self.typetots,grandtot=grandtot,ppmithreshold=ppmithreshold)
+            self.vectors[type][entry].reweight(weighting,self.feattots,self.typetots,grandtot=grandtot,ppmithreshold=ppmithreshold,saliency=saliency)
             done+=1
             if done%1000==0:
                 percent=done*100.0/todo
