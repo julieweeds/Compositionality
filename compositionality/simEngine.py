@@ -230,7 +230,7 @@ class WordVector:
         if saliency==0:
             return
         else:
-            print "Carrying out saliency reduction / context selection to top",str(saliency)
+            #print "Carrying out saliency reduction / context selection to top",str(saliency)
             feats=sorted(self.featureweights.items(),key=itemgetter(1),reverse=True)
             self.featureweights={}
             donetypes={}
@@ -244,6 +244,12 @@ class WordVector:
                     donetypes[pathtype]=done+1
                     all+=1
 
+    def output(self,outstream):
+        if len(self.featureweights.keys())>0:
+            outstream.write(self.name)
+            for f in self.featureweights.keys():
+                outstream.write("\t%s\t%s"%(f,str(self.featureweights[f])))
+            outstream.write("\n")
 
 class SimEngine():
     #holds dictionary of vectors - manages conversion to sparse arrays and similarity calculations
@@ -395,7 +401,7 @@ class SimEngine():
 
 
 
-    def reweight(self,type,weighting=["ppmi"],ppmithreshold=0,saliency=0):
+    def reweight(self,type,weighting=["ppmi"],ppmithreshold=0,saliency=0,outstream=None):
 
         #self.load_rowtotals(type)
         if not self.totals_computed:
@@ -428,7 +434,13 @@ class SimEngine():
                 percent=done*100.0/todo
                 print "Completed "+str(done)+" vectors ("+str(percent)+"%)"
 
+        if outstream !=None:
+            self.output_vectors(outstream,type)
 
+
+    def output_vectors(self,outstream,type):
+        for vector in self.vectors[type].values():
+            vector.output(outstream)
 
     def addfile(self,key, filename):
         self.filenames[key]=filename
