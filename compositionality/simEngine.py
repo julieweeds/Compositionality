@@ -2,8 +2,10 @@ from operator import itemgetter
 
 __author__ = 'juliewe'
 
-import numpy as np, scipy.sparse as sparse,sys,math
+import numpy as np, scipy.sparse as sparse,sys,math, array
 from composition import getorder,getpathtype
+from scipy.spatial.distance import cosine
+
 
 def isAny(token):
     return True
@@ -29,6 +31,48 @@ def profile(featdict,minorder=0,maxorder=10):
 
         print profile
 
+def view(vector,showfeatures=30):
+    line=""
+    feats=sorted(vector.items(),key=itemgetter(1),reverse=True)
+
+    for idx,tuple in enumerate(feats):
+        if idx<showfeatures:
+            line+="\t"+tuple[0]+"\t"+str(tuple[1])
+    return line
+
+def calculate_similarity(c_1, c_2, dist_fn, logging=None, return_distances=False):
+	c_1 = c_1 if not sparse.issparse(c_1) else c_1.A.squeeze()
+	c_2 = c_2 if not sparse.issparse(c_2) else c_2.A.squeeze()
+
+	if (type(c_1) != np.ndarray and type(c_2) != np.ndarray):
+		v1_array = array.array('f')
+		v2_array = array.array('f')
+
+		for feat in (set(c_1.keys()) | set(c_2.keys())):
+			v1_array.append(c_1.get(feat, 0.))
+			v2_array.append(c_2.get(feat, 0.))
+
+		# Compare similarity
+		v1 = np.array(v1_array)
+		v2 = np.array(v2_array)
+	else:
+		v1 = c_1
+		v2 = c_2
+
+	if (len(v1) > 0 and len(v2) > 0):
+		dist = dist_fn(v1, v2)
+
+		# if one of the vectors is all zeros, the distance function will return nan
+		if (math.isnan(dist) or math.isinf(dist)):
+			dist = 1.
+	else:
+		dist = 1.
+
+	if (logging is not None):
+		logging.info('\tSimilarity (len v1={}/ len v2={}): {}'.format(len(v1), len(v2), 1 - dist))
+
+	return dist if return_distances else 1. - dist
+
 #----
 #get the path prefix / dependency path of a given feature
 #self.getpathtype("amod:red") = amod
@@ -40,6 +84,7 @@ def getpathtype(feature):
     return fields[0]
 
 class WordVector:
+    showfeatures=30
 
     def __init__(self,token):
         self.name=token
@@ -182,6 +227,8 @@ class WordVector:
             sofar=self.pathtotals.get(pathtype,0.0)
             self.pathtotals[pathtype]=sofar+float(self.features[feature])
 
+
+
     def reweight(self,weighting,feattots,typetots,grandtot=0,ppmithreshold=0,saliency=0):
         self.featureweights={}
         self.lgth=-1
@@ -198,7 +245,7 @@ class WordVector:
             entrytotal=float(self.total) # C<w1,*,*>
 
             if "ttest" in weighting:
-                expected = (total*feattot)/(typetot*typetot)
+                expected = (total*feattot)/(typetot*typetot)  #incorrect!  this should be the type total for the entry not the total
                 obs=freq/typetot
                 score= (obs-expected)/math.pow(expected,0.5)
                 if score>ppmithreshold:
@@ -243,6 +290,15 @@ class WordVector:
                     self.featureweights[feature]=tuple[1]
                     donetypes[pathtype]=done+1
                     all+=1
+
+    def view(self):
+        if self.featureweights=={}:
+            vector=dict(self.features)
+        else:
+            vector=dict(self.featureweights)
+
+        line=self.name+"\t"+view(vector)
+        print line
 
     def output(self,outstream):
         if len(self.featureweights.keys())>0:
@@ -404,6 +460,7 @@ class SimEngine():
     def reweight(self,type,weighting=["ppmi"],ppmithreshold=0,saliency=0,outstream=None):
 
         #self.load_rowtotals(type)
+        self.vectors[type]["squirrel/N"].view()
         if not self.totals_computed:
             self.compute_totals(type,cds=("smooth_ppmi" in weighting))
         grandtot=0.0
@@ -426,6 +483,9 @@ class SimEngine():
         done =0
         todo=len(self.vectors[type].keys())
 
+        print("feattots"+view(self.feattots))
+        print("typetots"+view(self.typetots))
+        print("squirrel_typetots")+view(self.vectors[type]["squirrel/N"].pathtotals)
         for entry in self.vectors[type].keys():
 
             self.vectors[type][entry].reweight(weighting,self.feattots,self.typetots,grandtot=grandtot,ppmithreshold=ppmithreshold,saliency=saliency)
@@ -436,7 +496,7 @@ class SimEngine():
 
         if outstream !=None:
             self.output_vectors(outstream,type)
-
+        self.vectors[type]["squirrel/N"].view()
 
     def output_vectors(self,outstream,type):
         for vector in self.vectors[type].values():
@@ -581,7 +641,8 @@ class SimEngine():
                     if simmetric in SimEngine.matrix_sims:
                         vectorA.makearray(self.fk_idx)
                         vectorB.makearray(self.fk_idx)
-                    sim=vectorA.sim(vectorB,measure=simmetric)
+                    #sim=vectorA.sim(vectorB,measure=simmetric)
+                    sim=calculate_similarity(vectorA.featureweights,vectorB.featureweights,cosine)
                     vectorA.array=None
                     vectorB.array=None
                 results.append(sim)
