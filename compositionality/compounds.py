@@ -449,5 +449,7 @@ class Compounder:
 
 if __name__=="__main__":
     #first argument should be name of config file
+    print primes(20)
+    sys.exit(1)
     myCompounder=Compounder(sys.argv[1])
     myCompounder.run()

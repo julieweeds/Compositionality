@@ -39,6 +39,10 @@ class CompoundFinder(Compounder):
             self.convert7=False
         self.clean=(self.config.get('default','clean')=='True')
         self.dir=(self.config.get('default','dir')=='True')
+        try:
+            self.ukwac=(self.config.get('default','ukwac')=='True')
+        except:
+            self.ukwac=False
         self.readcompounds()
         self.counts={}
         self.countpos={}
@@ -57,7 +61,7 @@ class CompoundFinder(Compounder):
         self.minlength=int(self.config.get(self.ptype,'minlength'))
         self.extra=ast.literal_eval(self.config.get(self.ptype,'extra'))
         self.erased=ast.literal_eval(self.config.get(self.ptype,'erased'))
-        self.ukwac=(self.config.get(self.ptype,'ukwac')=='True')
+
         try:
             self.uselemma=(self.config.get(self.ptype,'uselemma')=='True')
         except:
