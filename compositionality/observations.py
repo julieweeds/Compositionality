@@ -12,6 +12,7 @@ def fields_from_ukwac(line):
     #make ukwac/baroni group corpora look like  conll7 format of wikipedia
     newfields=[]
     fields=line.split('\t')
+    print len(fields),fields
     newfields.append(fields[3])
     newfields+=fields[0:2]
     newfields.append('O')
