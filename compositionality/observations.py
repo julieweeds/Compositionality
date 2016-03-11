@@ -253,7 +253,7 @@ class CompoundFinder(Compounder):
     def process_sentence_contiguous(self,sentence):
         #just interested in contiguous nouns don't care about relations
 
-        #print sentence
+        print sentence
         if self.clean:
             self.output_sentence(sentence,self.cleanstream)
         mxindex=len(sentence.values())-1+self.firstindex
