@@ -8,6 +8,17 @@ import numpy as np, gzip
 
 from compounds import Compounder, getLex, getPos
 
+def fields_from_ukwac(line):
+    #make ukwac/baroni group corpora look like  conll7 format of wikipedia
+    newfields=[]
+    fields=line.split('\t')
+    newfields.append=fields[3]
+    newfields+=fields[0:2]
+    newfields.append('O')
+    newfields+=fields[4:5]
+    return newfields
+
+
 
 class CompoundFinder(Compounder):
 
@@ -46,6 +57,7 @@ class CompoundFinder(Compounder):
         self.minlength=int(self.config.get(self.ptype,'minlength'))
         self.extra=ast.literal_eval(self.config.get(self.ptype,'extra'))
         self.erased=ast.literal_eval(self.config.get(self.ptype,'erased'))
+        self.ukwac=(self.config.get(self.ptype,'ukwac')=='True')
         try:
             self.uselemma=(self.config.get(self.ptype,'uselemma')=='True')
         except:
@@ -99,7 +111,10 @@ class CompoundFinder(Compounder):
             #need to load in sentence at a time and process each sentence
             #need to be careful in case there are any dependencies on dependent
             line=line.rstrip()
-            fields=line.split('\t')
+            if self.ukwac:
+                fields=fields_from_ukwac(line)
+            else:
+                fields=line.split('\t')
             if len(fields)==self.arclength+1:
                 sentencebuffer[fields[0]]=fields[1:]
             else:
