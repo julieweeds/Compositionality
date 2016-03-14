@@ -122,6 +122,7 @@ class CompoundFinder(Compounder):
                 fields=fields_from_ukwac(line)
             else:
                 fields=line.split('\t')
+            print fields,len(fields), self.arclength+1, self.minlength+1
             if len(fields)==self.arclength+1:
                 sentencebuffer[fields[0]]=fields[1:]
             else:
