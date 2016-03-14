@@ -14,9 +14,9 @@ def fields_from_ukwac(line):
     fields=line.split('\t')
     try:
         newfields.append(fields[3])
-        newfields+=fields[0:2]
+        newfields+=fields[0:3]
         newfields.append('O')
-        newfields+=fields[4:5]
+        newfields+=fields[4:6]
     except:
         newfields=fields
     return newfields
@@ -122,7 +122,7 @@ class CompoundFinder(Compounder):
                 fields=fields_from_ukwac(line)
             else:
                 fields=line.split('\t')
-            print fields,len(fields), self.arclength+1, self.minlength+1
+            #print fields,len(fields), self.arclength+1, self.minlength+1
             if len(fields)==self.arclength+1:
                 sentencebuffer[fields[0]]=fields[1:]
             else:
