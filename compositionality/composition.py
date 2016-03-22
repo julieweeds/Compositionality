@@ -659,7 +659,8 @@ class Composition:
                 for line in instream:
                     line=line.rstrip()
                     fields=line.split("\t")
-                    if fields[0] != "___FILTERED___" and (self.normalised or float(fields[1])>self.rfilterfreq or self.phraseinclude(fields[0])):
+#                    if fields[0] != "___FILTERED___" and (self.normalised or float(fields[1])>self.rfilterfreq or self.phraseinclude(fields[0])):
+                    if fields[0] != "___FILTERED___":  #load in all totals and filter later
                         sofar=totals.get(fields[0],0)
                         totals[fields[0]]=sofar+float(fields[1])
             print "Loaded "+str(len(totals.keys()))
@@ -683,7 +684,8 @@ class Composition:
                 for line in instream:
                     line=line.rstrip()
                     fields=line.split("\t")
-                    if fields[0] != "___FILTERED___" and (self.normalised or float(fields[1])>self.cfilterfreq):
+#                    if fields[0] != "___FILTERED___" and (self.normalised or float(fields[1])>self.cfilterfreq):
+                    if fields[0] != "___FILTERED___":
                         feat=convert(fields[0],delims=self.pathdelims)
                         sofar=totals.get(feat,0)
                         if cds:
